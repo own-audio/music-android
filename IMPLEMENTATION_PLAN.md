@@ -23,7 +23,7 @@ the first of the three apps, so the foundation is written here) and the music ap
 | F3 | Servers, addresses, network, answer cache | ☑ 2026-11-21 (detection per kind comes with F7) |
 | M1 | Music library layer and catalogue database | ☐ |
 | M2 | own.audio as a music source | ☐ |
-| F4 + M3 | Player core and the music engine | ☐ |
+| F4 + M3 | Player core and the music engine | ◐ logic done 2026-11-21 (queue, ReplayGain, EQ model, chapters, plays, sleep timer, storage route, payload check); Media3 service next |
 | M4 | Browsing screens, mini player, full player | ☐ |
 | F7 | Welcome, sign-in, server page, family, devices, listening, logs | ☐ |
 | M5 | Playlists and smart playlists | ☐ |
