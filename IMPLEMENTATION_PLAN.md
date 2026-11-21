@@ -21,8 +21,8 @@ the first of the three apps, so the foundation is written here) and the music ap
 | F1 | Look: tokens, theme, brand, shared composables | ☑ 2026-11-21 |
 | F2 | own.audio client `:kit:ownaudio` | ☑ 2026-11-21 |
 | F3 | Servers, addresses, network, answer cache | ☑ 2026-11-21 (detection per kind comes with F7) |
-| M1 | Music library layer and catalogue database | ☐ |
-| M2 | own.audio as a music source | ☐ |
+| M1 | Music library layer and catalogue database | ◐ built 2026-11-21 (100k tracks: insert 2.3 s, album page 3 ms on the JVM); 600k on a device still to measure |
+| M2 | own.audio as a music source | ◐ built 2026-11-21; the demo-server check comes with the screens (M4) |
 | F4 + M3 | Player core and the music engine | ◐ logic done 2026-11-21 (queue, ReplayGain, EQ model, chapters, plays, sleep timer, storage route, payload check); Media3 service next |
 | M4 | Browsing screens, mini player, full player | ☐ |
 | F7 | Welcome, sign-in, server page, family, devices, listening, logs | ☐ |

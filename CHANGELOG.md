@@ -5,6 +5,7 @@ All notable changes to own.audio Music for Android. The format follows
 
 ## [Unreleased]
 
+- M1 and M2: the music library layer — one model over all servers, the catalogue on the phone in Room, and own.audio as a source fed by the sync snapshot and change feed (a failed re-sync leaves the old catalogue usable; a cut snapshot resumes where it stopped).
 - The player's logic, ported from the iOS app with its tests: the play queue (shuffle, repeat, Play Next, editing), ReplayGain, the equalizer presets, concert chapters, the play-counting rule, the sleep timer, the storage-route fallback and the audio payload check (which also recognises Matroska/WebM correctly — the iOS check never could).
 - F3: `:core:servers` — server records in one encrypted file (the key stays in the Android Keystore), never writing stale tokens back; address scopes, racing by server identity and per-network memory; the network monitor (metered, Data Saver); the offline switch; saved answers for offline use.
 - F2: `:kit:ownaudio`, the own.audio /api/v2 client: discovery (needs server 1.0.4), sign-in with password, two-factor and Google, rotating tokens refreshed one at a time, the catalogue, lists, smart playlists, state, playback links, sync snapshot and changes, live events, uploads, household, identify, narration and summaries. No /api/v1 calls.
