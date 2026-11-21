@@ -19,7 +19,7 @@ the first of the three apps, so the foundation is written here) and the music ap
 |---|---|---|
 | F0 | Repository, build, CI, empty tabs | ☑ 2026-11-21 |
 | F1 | Look: tokens, theme, brand, shared composables | ☑ 2026-11-21 |
-| F2 | own.audio client `:kit:ownaudio` | ☐ |
+| F2 | own.audio client `:kit:ownaudio` | ☑ 2026-11-21 |
 | F3 | Servers, addresses, network, answer cache | ☐ |
 | M1 | Music library layer and catalogue database | ☐ |
 | M2 | own.audio as a music source | ☐ |
@@ -37,7 +37,7 @@ the first of the three apps, so the foundation is written here) and the music ap
 | F9 + M13 | Localization, accessibility, tablets, misuse tests, scale | ☐ |
 | F10 + M14 | Release: Play, F-Droid, guide | ☐ |
 
-**Where we stopped:** F0 and F1 done 2026-11-21 (Gradle 9.9.2, AGP 9.5.2, Kotlin 2.4.21, compileSdk 37.2; release APK 1.6 MB). The server clients `:kit:subsonic` and `:kit:jellyfin` are done (all live tests pass against Navidrome 0.64 and Jellyfin, Quick Connect included); `:kit:ownaudio` (F2) is in progress. The three apps are built in parallel: shared modules land here first and are copied to book-android and podcast-android the same day. Both kits define their own small `ResponseCache` and `NetworkLog` interfaces; `:core:servers` implements them (F3).
+**Where we stopped:** F0 and F1 done 2026-11-21 (Gradle 9.9.2, AGP 9.5.2, Kotlin 2.4.21, compileSdk 37.2; release APK 1.6 MB). The server clients `:kit:subsonic` and `:kit:jellyfin` are done (all live tests pass against Navidrome 0.64 and Jellyfin, Quick Connect included); `:kit:ownaudio` (F2) is done too: 74 tests, live tests pass against the public demo, no /api/v1 anywhere; copied to book-android and podcast-android. The three apps are built in parallel: shared modules land here first and are copied to book-android and podcast-android the same day. Both kits define their own small `ResponseCache` and `NetworkLog` interfaces; `:core:servers` implements them (F3).
 
 ## Rules for whoever executes this plan
 
@@ -114,7 +114,7 @@ Foundation §5, with the music parts of OwnAudioKit: catalogue (`/artists`, `/co
 `/albums`, `/albums/{id}`, `/tracks`, `/tracks/{id}`, `/genres`), lists (`/playlists…`, `/search`,
 `/tracks/random`, `/me/played`, `/tracks/{id}/lyrics`), smart playlists (`/smart-playlists…`),
 ratings and feedback (`/me/ratings…`), identify (§M11), chapters (`PUT /tracks/{id}/chapters`),
-visibility (`PUT /tracks|albums…/visibility`), images (`PUT /tracks/{id}/image`, `/playlists/{id}/image`,
+visibility (`PUT /tracks/{id}/visibility`; v2 has no album visibility — "Share My Songs" sets each own song), images (`PUT /tracks/{id}/image`, `/playlists/{id}/image`,
 `/contributors/{id}/image`).
 
 Read: music-ios `Packages/OwnAudioKit/Sources/OwnAudioKit/*.swift` (all of it) and its tests; book-ios
@@ -581,6 +581,15 @@ repositories get a pointer README to this one and are archived, as their iOS cou
    copes; it costs a sniff).
 3. **The public demo server on 1.0.4 or later** so its discovery offers the demo account to v2 clients.
 4. **Sign in with Apple web callback**, if Apple sign-in on Android is wanted (foundation §10.4).
+5. **Fixes to `openapi-v2.json`** found while writing the client: `PushRequest.changes` points at the
+   change-feed `Change` schema instead of the push change (`client_id, op, kind, id, at, rating, value,
+   position_ms, …`, as in `backend/src/v2/state.rs`); `ProblemBody` lacks `mfa_token`, `mfa_methods`,
+   `feature`, `error`, `error_description`; the hosted routes (`/narration/*`, `/summaries/*`,
+   `/family/billing`) aren't in the public document; `Discovery.addresses`, every `Page_*.items` and the
+   smart rule are untyped `object`s; some times are plain strings (session times, `Family.created_at`,
+   `Invite.expires_at`, `Member.joined_at`).
+6. **Refresh-token reuse**: on 1.0.5 a refresh token sent again right after rotation got a new pair (a
+   grace window). The client doesn't rely on it; the server docs should say how long the window is.
 
 ## Open questions for the maintainer
 
