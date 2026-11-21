@@ -2,6 +2,9 @@ package audio.own.music.library.ownaudio
 
 import androidx.room.withTransaction
 import audio.own.core.servers.CompositeId
+import audio.own.kit.ownaudio.Family
+import audio.own.kit.ownaudio.IdentifyScope
+import audio.own.kit.ownaudio.Invite
 import audio.own.kit.ownaudio.ItemKind
 import audio.own.kit.ownaudio.OfflineChange
 import audio.own.kit.ownaudio.OwnAudioClient
@@ -10,39 +13,70 @@ import audio.own.kit.ownaudio.OwnAudioImages
 import audio.own.kit.ownaudio.Page
 import audio.own.kit.ownaudio.Play
 import audio.own.kit.ownaudio.PlaybackCapabilities
+import audio.own.kit.ownaudio.PlaylistPatch
+import audio.own.kit.ownaudio.ResolvedRule
+import audio.own.kit.ownaudio.UploadKinds
 import audio.own.kit.ownaudio.addToPlaylist
 import audio.own.kit.ownaudio.album
 import audio.own.kit.ownaudio.albums
 import audio.own.kit.ownaudio.contributor
+import audio.own.kit.ownaudio.createInvite
 import audio.own.kit.ownaudio.createPlaylist
+import audio.own.kit.ownaudio.createSmartPlaylist
+import audio.own.kit.ownaudio.createUpload
+import audio.own.kit.ownaudio.deleteInvite
 import audio.own.kit.ownaudio.deletePlaylist
+import audio.own.kit.ownaudio.deleteSmartPlaylist
 import audio.own.kit.ownaudio.discover
 import audio.own.kit.ownaudio.events
+import audio.own.kit.ownaudio.family
+import audio.own.kit.ownaudio.familyBilling
+import audio.own.kit.ownaudio.familyStorage
+import audio.own.kit.ownaudio.freezeSmartPlaylist
 import audio.own.kit.ownaudio.httpStatus
+import audio.own.kit.ownaudio.identify
+import audio.own.kit.ownaudio.invites
+import audio.own.kit.ownaudio.join
 import audio.own.kit.ownaudio.lyrics
 import audio.own.kit.ownaudio.me
 import audio.own.kit.ownaudio.members
+import audio.own.kit.ownaudio.orderPlaylist
+import audio.own.kit.ownaudio.pageAll
 import audio.own.kit.ownaudio.playbackInfo
 import audio.own.kit.ownaudio.played
 import audio.own.kit.ownaudio.playlist
 import audio.own.kit.ownaudio.playlistEntries
 import audio.own.kit.ownaudio.progress
 import audio.own.kit.ownaudio.push
+import audio.own.kit.ownaudio.putUpload
 import audio.own.kit.ownaudio.randomTracks
 import audio.own.kit.ownaudio.removeFromPlaylist
 import audio.own.kit.ownaudio.renamePlaylist
 import audio.own.kit.ownaudio.reportPlays
+import audio.own.kit.ownaudio.resolve
+import audio.own.kit.ownaudio.resolveSmartPlaylist
 import audio.own.kit.ownaudio.saveProgress
 import audio.own.kit.ownaudio.search
+import audio.own.kit.ownaudio.searchRecordings
+import audio.own.kit.ownaudio.setContributorImage
 import audio.own.kit.ownaudio.setFavourite
+import audio.own.kit.ownaudio.setPlaylistImage
+import audio.own.kit.ownaudio.setPlaylistVisibility
 import audio.own.kit.ownaudio.setRating
 import audio.own.kit.ownaudio.setTrackChapters
+import audio.own.kit.ownaudio.setTrackImage
+import audio.own.kit.ownaudio.setTrackVisibility
 import audio.own.kit.ownaudio.signOut
+import audio.own.kit.ownaudio.smartPlaylists
+import audio.own.kit.ownaudio.smartPresets
 import audio.own.kit.ownaudio.track
 import audio.own.kit.ownaudio.trackChapters
 import audio.own.kit.ownaudio.tracks
+import audio.own.kit.ownaudio.updatePlaylist
+import audio.own.kit.ownaudio.updateSmartPlaylist
 import audio.own.music.library.AlbumSort
 import audio.own.music.library.AlbumWithSongs
+import audio.own.music.library.ArtworkSource
 import audio.own.music.library.BatchedOfflineEdits
 import audio.own.music.library.Capability
 import audio.own.music.library.CatalogueSyncResult
@@ -50,18 +84,36 @@ import audio.own.music.library.ChangeFeedCatalogue
 import audio.own.music.library.ConcertSource
 import audio.own.music.library.ConnectionStatus
 import audio.own.music.library.FavoriteKind
+import audio.own.music.library.HouseholdCredit
+import audio.own.music.library.HouseholdInfo
+import audio.own.music.library.HouseholdInvite
+import audio.own.music.library.HouseholdMember
+import audio.own.music.library.HouseholdSource
+import audio.own.music.library.HouseholdStorage
+import audio.own.music.library.IdentifyAvailability
 import audio.own.music.library.IdentifySource
 import audio.own.music.library.LiveLibraryUpdates
 import audio.own.music.library.MusicSource
 import audio.own.music.library.OfflineEdit
 import audio.own.music.library.PlaybackLink
+import audio.own.music.library.PlaylistDetailsSource
 import audio.own.music.library.PlaylistWithSongs
+import audio.own.music.library.SmartPlaylistInfo
+import audio.own.music.library.SmartPlaylistSource
+import audio.own.music.library.SmartPresetInfo
+import audio.own.music.library.SmartResult
+import audio.own.music.library.SmartRule
 import audio.own.music.library.SourceError
 import audio.own.music.library.db.CatalogueDatabase
 import audio.own.music.library.db.FavouriteRow
 import audio.own.music.library.db.PlaylistEntryRow
 import audio.own.music.library.db.PlaylistRow
 import audio.own.music.library.db.RatingRow
+import audio.own.music.library.identify.IdentifyRunReview
+import audio.own.music.library.identify.IdentifyRuns
+import audio.own.music.library.identify.RecordingResults
+import audio.own.music.library.identify.searchWidening
+import audio.own.music.library.identify.undoTrack
 import audio.own.music.library.model.Album
 import audio.own.music.library.model.Artist
 import audio.own.music.library.model.FavoritesResult
@@ -73,15 +125,22 @@ import audio.own.music.library.model.PlaylistEntry
 import audio.own.music.library.model.SearchResult
 import audio.own.music.library.model.Song
 import audio.own.music.library.model.SongChapter
+import java.io.IOException
+import java.math.BigDecimal
 import java.time.Clock
 import java.time.Instant
+import java.time.OffsetDateTime
+import java.util.Optional
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.Request
 import audio.own.kit.ownaudio.Playlist as ApiPlaylist
 import audio.own.kit.ownaudio.Track as ApiTrack
 
@@ -104,13 +163,25 @@ class OwnAudioSource(
     private val db: CatalogueDatabase,
     val listener: ListenerState = ListenerState(),
     private val clock: Clock = Clock.systemUTC(),
-) : MusicSource, ChangeFeedCatalogue, BatchedOfflineEdits, LiveLibraryUpdates, ConcertSource, IdentifySource {
+) : MusicSource,
+    ChangeFeedCatalogue,
+    BatchedOfflineEdits,
+    LiveLibraryUpdates,
+    PlaylistDetailsSource,
+    SmartPlaylistSource,
+    HouseholdSource,
+    ArtworkSource,
+    ConcertSource,
+    IdentifySource {
     private val dao = db.catalogue()
     private val feed = OwnAudioCatalogueSync(db, serverId, client, clock)
 
     /** The shuffle Random reads pages of; a new one at offset 0. */
     private val shuffleSeed = AtomicLong(clock.millis() % 1_000_003)
     private val memberNames = AtomicReference<Map<String, String>?>(null)
+
+    /** What the server said about identify; null until it answered once. */
+    private val identifyAnswer = AtomicReference<Optional<IdentifyAvailability>?>(null)
 
     /** No instant mix: the server has nothing to pick similar songs from. */
     override val capabilities: Set<Capability> = setOf(Capability.RATINGS, Capability.LOWER_BITRATE)
@@ -397,6 +468,231 @@ class OwnAudioSource(
 
     // endregion
 
+    // region Playlist details
+
+    override suspend fun setPlaylistDescription(id: String, description: String?) {
+        // Blank clears it: the server reads an empty description as none.
+        val updated = api { client.updatePlaylist(apiId(id), PlaylistPatch(description = description?.trim().orEmpty())) }
+        dao.upsertPlaylists(listOf(playlistRow(updated)))
+    }
+
+    /** `PUT …/entries/order` with every entry id; the catalogue's copy follows at once. */
+    override suspend fun reorderPlaylist(id: String, entryIds: List<String>) {
+        require(entryIds.isNotEmpty() && entryIds.toSet().size == entryIds.size) { "every entry id once" }
+        val raw = apiId(id)
+        api { client.orderPlaylist(raw, entryIds) }
+        val known = dao.playlistEntryRows(serverId, raw).associateBy { it.entryId }
+        if (known.isEmpty()) return
+        val ordered = entryIds.mapNotNull { known[it] } + known.values.filter { it.entryId !in entryIds.toSet() }
+        db.withTransaction {
+            dao.deletePlaylistEntries(serverId, raw)
+            dao.upsertPlaylistEntries(ordered.mapIndexed { i, row -> row.copy(position = i) })
+        }
+    }
+
+    // endregion
+
+    // region Smart playlists
+
+    override suspend fun smartPlaylists(): List<SmartPlaylistInfo> = signedIn {
+        val me = myId()
+        pageAll { cursor -> client.smartPlaylists(cursor) }.map { smartInfo(it, me) }
+    }
+
+    override suspend fun smartPresets(): List<SmartPresetInfo> = signedIn {
+        client.smartPresets().map { SmartPresetInfo(it.slug, it.name, it.rule) }
+    }
+
+    override suspend fun resolve(rule: SmartRule): SmartResult = signedIn { smartResult(client.resolve(rule, include = TRACK_INCLUDES)) }
+
+    override suspend fun resolveSmartPlaylist(id: String): SmartResult =
+        signedIn { smartResult(client.resolveSmartPlaylist(apiId(id), include = TRACK_INCLUDES)) }
+
+    override suspend fun saveSmartPlaylist(name: String, rule: SmartRule, shared: Boolean): SmartPlaylistInfo = signedIn {
+        val me = myId()
+        smartInfo(client.createSmartPlaylist(name, rule, visibility(shared)), me)
+    }
+
+    override suspend fun updateSmartPlaylist(id: String, name: String, rule: SmartRule, shared: Boolean): SmartPlaylistInfo = signedIn {
+        val me = myId()
+        smartInfo(client.updateSmartPlaylist(apiId(id), name = name, rule = rule, visibility = visibility(shared)), me)
+    }
+
+    override suspend fun deleteSmartPlaylist(id: String) = signedIn { client.deleteSmartPlaylist(apiId(id)) }
+
+    /** The new playlist goes into the catalogue at once, so Playlists shows it before the next sync. */
+    override suspend fun freezeSmartPlaylist(id: String, name: String?) {
+        val playlist = signedIn { client.freezeSmartPlaylist(apiId(id), name?.trim()?.ifEmpty { null }) }
+        dao.upsertPlaylists(listOf(playlistRow(playlist)))
+    }
+
+    private fun smartInfo(p: audio.own.kit.ownaudio.SmartPlaylist, me: String) = SmartPlaylistInfo(
+        id = id(p.id),
+        name = p.name,
+        rule = p.rule,
+        isShared = p.visibility == "family",
+        isMine = p.ownerId == me,
+        isFrozen = p.mode == "frozen",
+    )
+
+    private suspend fun smartResult(r: ResolvedRule): SmartResult {
+        val mapper = mapper(r.included)
+        return SmartResult(r.items.map { mapper.song(it) }, r.candidates, r.durationMs)
+    }
+
+    // endregion
+
+    // region Household
+
+    override suspend fun household(): HouseholdInfo = signedIn {
+        val family = client.family()
+        val members = client.members()
+        memberNames.set(members.associate { it.userId to it.name })
+        householdInfo(family, members)
+    }
+
+    /** A picture link the household records hand out; signed, so asked for without the token. */
+    override suspend fun picture(name: String): ByteArray = signedIn {
+        if (client.isOffline()) throw OwnAudioException.Offline
+        withContext(Dispatchers.IO) {
+            val request = Request.Builder().url(name).header("User-Agent", client.userAgent).build()
+            try {
+                client.http.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) throw OwnAudioException.Http(response.code)
+                    response.body.bytes()
+                }
+            } catch (e: IOException) {
+                throw OwnAudioException.Network(e)
+            }
+        }
+    }
+
+    override suspend fun storage(): HouseholdStorage = signedIn {
+        val s = client.familyStorage()
+        HouseholdStorage(s.totalBytes, s.musicBytes, s.audiobooksBytes, s.podcastsBytes)
+    }
+
+    override suspend fun credit(): HouseholdCredit? = signedIn {
+        val billing = try {
+            client.familyBilling()
+        } catch (e: OwnAudioException) {
+            // A server that doesn't charge (the open-source one says `feature_unavailable`).
+            if (e.httpStatus == 404 || e.httpStatus == 501) return@signedIn null
+            throw e
+        }
+        HouseholdCredit(
+            balance = micro(billing.availableMicro),
+            currency = billing.pricing.currency,
+            monthlyCost = micro(billing.estimatedMonthlyCostMicro),
+            daysLeft = billing.daysRemaining?.toInt(),
+            isDepleted = billing.depleted,
+        )
+    }
+
+    override suspend fun invites(): List<HouseholdInvite> = signedIn { client.invites().filter { it.useCount < it.maxUses }.map(::invite) }
+
+    override suspend fun createInvite(): HouseholdInvite = signedIn { invite(client.createInvite()) }
+
+    override suspend fun deleteInvite(id: String) = signedIn { client.deleteInvite(id) }
+
+    override suspend fun joinHousehold(code: String): HouseholdInfo {
+        signedIn { client.join(code.trim()) }
+        memberNames.set(null)
+        return household()
+    }
+
+    override suspend fun ownSongIds(albumId: String): List<String> {
+        val raw = apiId(albumId)
+        val me = myId()
+        if (dao.album(serverId, raw) != null) return dao.ownTracksOfAlbum(serverId, raw, me).map(::id)
+        // Not in the catalogue yet: the server's list of the account's own songs on it.
+        return signedIn { pageAll { cursor -> client.tracks(albumId = raw, owner = "me", cursor = cursor, limit = PAGE_MAX) } }
+            .filter { it.ownerId == me }
+            .map { id(it.id) }
+    }
+
+    /** One call per song (`PUT /tracks/{id}/visibility`); the catalogue's copy follows at once. */
+    override suspend fun setShared(songIds: List<String>, shared: Boolean) {
+        val raws = songIds.map(::apiId)
+        val wanted = visibility(shared)
+        val done = ArrayList<String>()
+        try {
+            signedIn { for (raw in raws) client.setTrackVisibility(raw, wanted).also { done += raw } }
+        } finally {
+            // What the server took stays taken, even when a later song failed.
+            for (chunk in done.chunked(CatalogueWriter.CHUNK)) dao.setTrackVisibility(serverId, chunk, wanted)
+        }
+    }
+
+    override suspend fun setAlbumShared(albumId: String, shared: Boolean): Int {
+        val songs = ownSongIds(albumId)
+        if (songs.isNotEmpty()) setShared(songs, shared)
+        return songs.size
+    }
+
+    override suspend fun setShared(playlistId: String, shared: Boolean) {
+        val updated = signedIn { client.setPlaylistVisibility(apiId(playlistId), visibility(shared)) }
+        dao.upsertPlaylists(listOf(playlistRow(updated)))
+    }
+
+    private fun householdInfo(f: Family, members: List<audio.own.kit.ownaudio.Member>) = HouseholdInfo(
+        name = f.name,
+        picture = f.image,
+        isAdmin = f.me.role == "admin",
+        members = members.map {
+            HouseholdMember(it.userId, it.name, it.role == "admin", it.pending, it.userId == f.me.userId, it.image)
+        }
+            // You first, then admins, then by name.
+            .sortedWith(compareBy({ !it.isMe }, { !it.isAdmin }, { it.name.lowercase() })),
+    )
+
+    // endregion
+
+    // region Artwork
+
+    /** One upload, named by each song: the server registers the same picture once. */
+    override suspend fun setCover(songIds: List<String>, albumId: String?, image: ByteArray, contentType: String) {
+        if (songIds.isEmpty()) return
+        val raws = songIds.map(::apiId)
+        signedIn {
+            val upload = uploadImage(image, contentType)
+            for (raw in raws) {
+                val track = client.setTrackImage(raw, upload)
+                dao.setTrackImage(serverId, track.id, track.image)
+            }
+        }
+        // The album's link points at the old picture; its record has the new one.
+        val album = albumId?.let(::apiId) ?: return
+        orNull { client.album(album, include = emptyList()).record.image }?.let { dao.setAlbumImage(serverId, album, it) }
+    }
+
+    /** By the artist's id: v2 names a contributor, not a name. */
+    override suspend fun setPicture(artist: Artist, image: ByteArray, contentType: String) {
+        val raw = apiId(artist.id)
+        val contributor = signedIn { client.setContributorImage(raw, uploadImage(image, contentType)) }
+        dao.setArtistImage(serverId, contributor.id, contributor.image)
+    }
+
+    override suspend fun setCover(playlistId: String, image: ByteArray, contentType: String) {
+        val raw = apiId(playlistId)
+        val playlist = signedIn { client.setPlaylistImage(raw, uploadImage(image, contentType)) }
+        dao.upsertPlaylists(listOf(playlistRow(playlist)))
+    }
+
+    /**
+     * `POST /uploads` with the exact size, the bytes PUT with exactly the headers it signed, and
+     * its id for naming the picture. Any image kind is taken for any picture; the kit's
+     * `track_cover` is the one the server documents for songs and playlists.
+     */
+    private suspend fun uploadImage(image: ByteArray, contentType: String): String {
+        val ext = if (contentType.equals("image/png", ignoreCase = true)) "png" else "jpg"
+        val link = client.createUpload(UploadKinds.TRACK_COVER, "cover.$ext", contentType, image.size.toLong())
+        client.putUpload(link, image)
+        return link.uploadId
+    }
+
+    // endregion
+
     override suspend fun lyrics(song: Song): List<Lyrics> = api {
         val answer = client.lyrics(apiId(song.id))
         if (answer.text == null || answer.lines.isEmpty()) {
@@ -582,9 +878,57 @@ class OwnAudioSource(
 
     // endregion
 
+    // region Identify
+
+    /**
+     * Shown when the server has `identify_library` (or `music_identify`) on an `/api/v2` new
+     * enough for it. Remembered once answered; a failed ask is asked again next time.
+     */
+    override suspend fun identifyAvailability(): IdentifyAvailability? {
+        identifyAnswer.get()?.let { return it.orElse(null) }
+        if (client.tokens?.current == null) return null
+        val discovery = orNull { client.discover() } ?: return null
+        val revision = discovery.v2?.revision ?: 0
+        val offered = (discovery.has("identify_library") || discovery.has("music_identify")) && revision >= OwnAudioException.MIN_REVISION
+        val answer = if (offered) IdentifyAvailability(charges = discovery.has("billing")) else null
+        identifyAnswer.set(Optional.ofNullable(answer))
+        return answer
+    }
+
+    override fun identifyRuns(availability: IdentifyAvailability): IdentifyRuns = IdentifyRuns(client, availability)
+
+    override fun identifyRun(runId: String): IdentifyRunReview = IdentifyRunReview(client, runId)
+
+    override fun albumScope(albumId: String, label: String) = IdentifyScope("album", id = apiId(albumId), label = label)
+
+    /** An artist is a contributor on own.audio. */
+    override fun artistScope(artistId: String, label: String) = IdentifyScope("artist", id = apiId(artistId), label = label)
+
+    override suspend fun searchRecordings(songId: String, title: String, artist: String, album: String): RecordingResults {
+        val raw = apiId(songId)
+        return searchWidening(title, artist, album) { client.searchRecordings(raw, it) }
+    }
+
+    override suspend fun identifySong(songId: String, recording: String, release: String?) {
+        api { client.identify(apiId(songId), recording.trim(), release) }
+    }
+
+    override suspend fun undoIdentify(songId: String): Boolean = undoTrack(client, apiId(songId))
+
+    // endregion
+
     // region Helpers
 
     private suspend fun userId(): String? = listener.current.userId ?: dao.feedState(serverId)?.userId?.also(listener::setUserId)
+
+    /** The account's id, from the server when no sync has told it yet. */
+    private suspend fun myId(): String = userId() ?: api { client.me().id }.also(listener::setUserId)
+
+    /** own.audio-only calls need the API's sign-in; without one the feature is not there. */
+    private suspend fun <T> signedIn(work: suspend () -> T): T {
+        if (client.tokens?.current == null) throw SourceError.Unsupported()
+        return api(work)
+    }
 
     private suspend fun currentGeneration(): Long = dao.feedState(serverId)?.generation ?: 0
 
@@ -682,6 +1026,18 @@ class OwnAudioSource(
             "audio/ogg", "audio/opus", "audio/vorbis",
         )
 
+        fun visibility(shared: Boolean) = if (shared) "family" else "private"
+
+        fun micro(amount: Long): BigDecimal = BigDecimal.valueOf(amount, 6)
+
+        fun invite(i: Invite) = HouseholdInvite(
+            id = i.id,
+            code = i.code,
+            joinUrl = i.joinUrl,
+            usesLeft = maxOf(i.maxUses - i.useCount, 0),
+            expiresAt = runCatching { OffsetDateTime.parse(i.expiresAt).toInstant() }.getOrNull(),
+        )
+
         fun itemKind(kind: FavoriteKind): ItemKind = when (kind) {
             FavoriteKind.SONG -> ItemKind.TRACK
             FavoriteKind.ALBUM -> ItemKind.ALBUM
@@ -692,11 +1048,17 @@ class OwnAudioSource(
             is OwnAudioException.SignedOut, is OwnAudioException.SignInRefused -> SourceError.SignInRejected(e)
             is OwnAudioException.Problem -> when (e.status) {
                 401 -> SourceError.SignInRejected(e)
+                402 -> SourceError.PaymentRequired(e)
                 403 -> SourceError.NotAllowed(e)
                 404 -> SourceError.NotFound(e)
+                409 -> SourceError.Conflict(e.detail, e)
                 else -> SourceError.Server(e.detail ?: e.code)
             }
-            is OwnAudioException.Http -> if (e.status == 404) SourceError.NotFound(e) else SourceError.Http(e.status)
+            is OwnAudioException.Http -> when (e.status) {
+                402 -> SourceError.PaymentRequired(e)
+                404 -> SourceError.NotFound(e)
+                else -> SourceError.Http(e.status)
+            }
             is OwnAudioException.Decoding -> SourceError.Unreadable(e)
             is OwnAudioException.Network, is OwnAudioException.SnapshotTruncated -> SourceError.Network(e)
             is OwnAudioException.Offline -> SourceError.Offline()

@@ -160,6 +160,15 @@ interface CatalogueDao {
     @Query("UPDATE album SET image = :image WHERE serverId = :serverId AND id = :id") suspend fun setAlbumImage(serverId: String, id: String, image: String?)
     @Query("UPDATE artist SET image = :image WHERE serverId = :serverId AND id = :id") suspend fun setArtistImage(serverId: String, id: String, image: String?)
     @Query("UPDATE playlist SET image = :image WHERE serverId = :serverId AND id = :id") suspend fun setPlaylistImage(serverId: String, id: String, image: String?)
+    @Query("UPDATE track SET visibility = :visibility WHERE serverId = :serverId AND id IN (:ids)")
+    suspend fun setTrackVisibility(serverId: String, ids: List<String>, visibility: String)
+
+    /** An album's tracks that [ownerId] owns, in album order: what "Share My Songs" and a new album cover change. */
+    @Query(
+        """SELECT id FROM track WHERE serverId = :serverId AND albumId = :albumId AND ownerId = :ownerId
+        ORDER BY discNumber IS NULL, discNumber, trackNumber IS NULL, trackNumber, title""",
+    )
+    suspend fun ownTracksOfAlbum(serverId: String, albumId: String, ownerId: String): List<String>
 
     // endregion
 
@@ -321,6 +330,9 @@ interface CatalogueDao {
         WHERE e.serverId = :serverId AND e.playlistId = :playlistId ORDER BY e.position""",
     )
     suspend fun playlistTracks(serverId: String, playlistId: String): List<PlaylistTrackView>
+
+    @Query("SELECT * FROM playlist_entry WHERE serverId = :serverId AND playlistId = :playlistId ORDER BY position")
+    suspend fun playlistEntryRows(serverId: String, playlistId: String): List<PlaylistEntryRow>
 
     // What an id is, and its picture link.
 

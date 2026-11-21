@@ -26,13 +26,13 @@ the first of the three apps, so the foundation is written here) and the music ap
 | F4 + M3 | Player core and the music engine | ◐ engine and service wired 2026-11-21 (release APK 7.25 MB); open: an audio measurement of gapless, concert chapters, the plays outbox (M6) |
 | M4 | Browsing screens, mini player, full player | ◐ built 2026-11-21 and played on the demo (notification, background, last queue after relaunch, every player sheet); open: guide pages, the scrubber's look, tablet sidebar and output switcher not yet seen on screen |
 | F7 | Welcome, sign-in, server page, family, devices, listening, logs | ◐ built 2026-11-21 for own.audio and tried on the demo; Google waits for the OAuth clients, two-factor and account deletion tested against a fake server only |
-| M5 | Playlists and smart playlists | ☐ |
+| M5 | Playlists and smart playlists | ◐ library side done 2026-11-21 (smart playlists, playlist edits and reorder); screens next |
 | F5 + F6 + M6 | Downloads, offline, sync and outboxes | ☐ |
 | M7 | Subsonic / OpenSubsonic | ◐ kit and source done 2026-11-21 (live tests pass on Navidrome); app sign-in and wiring next |
 | M8 | Jellyfin | ◐ kit and source done 2026-11-21 (live tests pass); app sign-in, Quick Connect screen, library picker next |
 | M9 | Settings | ☐ |
-| M10 | own.audio extras: sharing, covers, concerts | ☐ |
-| M11 | Identify (MusicBrainz) | ☐ |
+| M10 | own.audio extras: sharing, covers, concerts | ◐ library side done 2026-11-21; screens next |
+| M11 | Identify (MusicBrainz) | ◐ library side done 2026-11-21 (runs, review, follower timing); screens next |
 | F8 + M12 | Android Auto, widget, deep links, voice, background refresh | ☐ |
 | F9 + M13 | Localization, accessibility, tablets, misuse tests, scale | ☐ |
 | F10 + M14 | Release: Play, F-Droid, guide | ☐ |

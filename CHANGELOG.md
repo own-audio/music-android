@@ -5,6 +5,7 @@ All notable changes to own.audio Music for Android. The format follows
 
 ## [Unreleased]
 
+- The library side of smart playlists, playlist editing (description, reorder), sharing songs, albums and playlists with the family, your own covers and artist pictures (through uploads, by id), concert song marks and MusicBrainz identify (runs, review, live progress), all on own.audio's v2 API.
 - M7 and M8 (library side): Subsonic/OpenSubsonic and Jellyfin as music sources — browsing, every album order the server has, favorites, ratings (Subsonic), playlists, lyrics, Instant Mix (Jellyfin), ReplayGain and normalization gain, smaller streams, plays and session reports, and the catalogue on the phone read page by page (the catalogue database moves to version 2 to keep format and gain).
 - Players wait through long signal gaps instead of failing as "stuck buffering" after ten minutes.
 - M4: the playback service and the music screens — Home (Shuffle All, Recently Played, Recently Added, Playlists), Library (artists, albums with every sort, songs, genres, favorites, concerts), album and artist pages, the song menu (Play Next, Add to Queue, Favorite, Rate), Search, the mini player and the full player with Queue, Sleep Timer, Crossfade and Volume Leveling, Lyrics and Equalizer; Settings gains Streaming and Playback. Plays in the background with the media notification, and the last queue comes back paused after a relaunch.

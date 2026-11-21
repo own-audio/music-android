@@ -66,6 +66,12 @@ sealed class SourceError(message: String, cause: Throwable? = null) : Exception(
     /** The server doesn't have this feature. */
     class Unsupported : SourceError("unsupported")
 
+    /** A server that charges found the household's credit short (`402 payment_required`). */
+    class PaymentRequired(cause: Throwable? = null) : SourceError("payment required", cause)
+
+    /** The item isn't in a state the request needs (`409`), such as undoing what was never done. */
+    class Conflict(val detail: String?, cause: Throwable? = null) : SourceError(detail ?: "conflict", cause)
+
     /** The server's own message. */
     class Server(val text: String) : SourceError(text)
 }

@@ -1,6 +1,11 @@
 package audio.own.music.library
 
+import audio.own.kit.ownaudio.IdentifyScope
 import audio.own.kit.ownaudio.OwnAudioClient
+import audio.own.kit.ownaudio.RecordingCandidate
+import audio.own.music.library.identify.IdentifyRunReview
+import audio.own.music.library.identify.IdentifyRuns
+import audio.own.music.library.identify.RecordingResults
 import audio.own.music.library.model.Album
 import audio.own.music.library.model.Artist
 import audio.own.music.library.model.Song
@@ -113,7 +118,13 @@ data class HouseholdCredit(
     val isDepleted: Boolean,
 )
 
-interface HouseholdSource : MusicSource {
+/** A server where each song and playlist has an owner, who alone shares or changes it. */
+interface OwnedItems : MusicSource {
+    /** The listener's own songs of an album, in album order; others' songs on it are left out. */
+    suspend fun ownSongIds(albumId: String): List<String>
+}
+
+interface HouseholdSource : OwnedItems {
     suspend fun household(): HouseholdInfo
 
     /** The family's or a member's picture, by what [HouseholdInfo] names it. */
@@ -131,6 +142,9 @@ interface HouseholdSource : MusicSource {
 
     /** The listener's own songs: shared with the household, or kept to themselves. */
     suspend fun setShared(songIds: List<String>, shared: Boolean)
+
+    /** An album's "Share My Songs": each of the listener's own songs on it; how many. */
+    suspend fun setAlbumShared(albumId: String, shared: Boolean): Int
     suspend fun setShared(playlistId: String, shared: Boolean)
 }
 
@@ -140,11 +154,26 @@ interface HouseholdSource : MusicSource {
  * A server that takes the listener's own pictures: songs' covers (an album's cover is its
  * songs'), artists' pictures, playlists' covers.
  */
-interface ArtworkSource : MusicSource {
-    /** Each of the listener's own songs given the picture; [albumId] when they are an album's. */
+interface ArtworkSource : OwnedItems {
+    /**
+     * Each of the listener's own songs given the picture; [albumId] when they are an album's.
+     * [image] is what the app made of the chosen picture (resized, JPEG or PNG), sent as it is.
+     */
     suspend fun setCover(songIds: List<String>, albumId: String?, image: ByteArray, contentType: String)
     suspend fun setPicture(artist: Artist, image: ByteArray, contentType: String)
     suspend fun setCover(playlistId: String, image: ByteArray, contentType: String)
+}
+
+/** Playlist edits beyond what every source has. */
+interface PlaylistDetailsSource : MusicSource {
+    /** Null or blank takes it away. */
+    suspend fun setPlaylistDescription(id: String, description: String?)
+
+    /**
+     * A new order: every entry id of the playlist ([audio.own.music.library.model.Song.playlistEntryId]),
+     * in the order wanted. A song can be in a playlist twice, so it goes by entries, not songs.
+     */
+    suspend fun reorderPlaylist(id: String, entryIds: List<String>)
 }
 
 // region Smart playlists
@@ -218,13 +247,53 @@ interface ConcertSource : MusicSource {
     suspend fun savePosition(songId: String, positionMs: Long)
 }
 
+/** What a server's identify offers; null from [IdentifySource.identifyAvailability] when it has none. */
+data class IdentifyAvailability(
+    /** The server charges for identifying (its `billing` module): quote, then ask before starting. */
+    val charges: Boolean,
+)
+
 /**
- * Identify (MusicBrainz). The iOS screens talk to the own.audio client directly, run by run and
- * proposal by proposal, so this hands the client over rather than wrapping two dozen calls.
+ * Identify (MusicBrainz): the server matches the listener's own songs in the background and
+ * proposes what they are; nothing changes until a proposal is accepted, and no file ever does.
+ * Runs and their proposals are [IdentifyRuns] and [IdentifyRunReview]; a single song is
+ * identified here.
  */
 interface IdentifySource : MusicSource {
     val identifyClient: OwnAudioClient
 
     /** Item ids as the API knows them (no server prefix), for building an identify scope. */
     fun apiId(id: String): String
+
+    /**
+     * Asked once and remembered while the source lives; a failed ask is not remembered. Null
+     * when the server has no identify (or its `/api/v2` is too old for it).
+     */
+    suspend fun identifyAvailability(): IdentifyAvailability?
+
+    /** The run list, and starting a run. */
+    fun identifyRuns(availability: IdentifyAvailability): IdentifyRuns
+
+    /** One run's proposals. */
+    fun identifyRun(runId: String): IdentifyRunReview
+
+    /** A run over one album or one artist, by their composite ids. */
+    fun albumScope(albumId: String, label: String): IdentifyScope
+    fun artistScope(artistId: String, label: String): IdentifyScope
+
+    /** MusicBrainz recordings for one song, in the owner's words; blank words are left out. */
+    suspend fun searchRecordings(songId: String, title: String, artist: String, album: String): RecordingResults
+
+    /** Identifies one song as a recording, by its id or a musicbrainz.org link. */
+    suspend fun identifySong(songId: String, recording: String, release: String? = null)
+
+    /** Puts one song back as its file says; false when it was never identified (hide Undo). */
+    suspend fun undoIdentify(songId: String): Boolean
+}
+
+/** Within five seconds of the song's own length, as the server's matching counts it. */
+fun RecordingCandidate.lengthFits(songMs: Long?): Boolean {
+    val ms = durationMs ?: return true
+    if (songMs == null) return true
+    return kotlin.math.abs(ms / 1000 - songMs / 1000) <= 5
 }
