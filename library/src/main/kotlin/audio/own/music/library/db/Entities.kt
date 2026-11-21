@@ -94,6 +94,16 @@ data class TrackRow(
     val createdAtMs: Long,
     val updatedAtMs: Long,
     val gen: Long,
+    // What Subsonic and Jellyfin say about the file and its loudness (version 2). own.audio's
+    // records carry a content type and size instead, and no gain.
+    /** The file's format as Subsonic names it: "mp3", "flac". */
+    val suffix: String? = null,
+    /** Bits per second. */
+    val bitRate: Int? = null,
+    val trackGain: Double? = null,
+    val albumGain: Double? = null,
+    val trackPeak: Double? = null,
+    val albumPeak: Double? = null,
 )
 
 @Entity(tableName = "genre", primaryKeys = ["serverId", "id"], indices = [Index("serverId", "name")])

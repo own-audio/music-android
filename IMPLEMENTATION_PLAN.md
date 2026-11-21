@@ -28,8 +28,8 @@ the first of the three apps, so the foundation is written here) and the music ap
 | F7 | Welcome, sign-in, server page, family, devices, listening, logs | ◐ built 2026-11-21 for own.audio and tried on the demo; Google waits for the OAuth clients, two-factor and account deletion tested against a fake server only |
 | M5 | Playlists and smart playlists | ☐ |
 | F5 + F6 + M6 | Downloads, offline, sync and outboxes | ☐ |
-| M7 | Subsonic / OpenSubsonic | ◐ `:kit:subsonic` done 2026-11-21 |
-| M8 | Jellyfin | ◐ `:kit:jellyfin` done 2026-11-21 |
+| M7 | Subsonic / OpenSubsonic | ◐ kit and source done 2026-11-21 (live tests pass on Navidrome); app sign-in and wiring next |
+| M8 | Jellyfin | ◐ kit and source done 2026-11-21 (live tests pass); app sign-in, Quick Connect screen, library picker next |
 | M9 | Settings | ☐ |
 | M10 | own.audio extras: sharing, covers, concerts | ☐ |
 | M11 | Identify (MusicBrainz) | ☐ |

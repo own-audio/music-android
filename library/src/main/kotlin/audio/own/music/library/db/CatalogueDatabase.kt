@@ -1,6 +1,7 @@
 package audio.own.music.library.db
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -8,12 +9,15 @@ import androidx.room.withTransaction
 
 /**
  * Every server's catalogue in one database. The schema is exported to `library/schemas`, so each
- * version can be checked and a migration written against the one before; until 1.0 ships there
- * is only version 1.
+ * version can be checked and a migration written against the one before.
+ *
+ * Version 2 added the file format, bit rate and gain columns Subsonic and Jellyfin catalogues
+ * fill; adding nullable columns is a migration Room writes itself.
  */
 @Database(
-    version = 1,
+    version = 2,
     exportSchema = true,
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
     entities = [
         ArtistRow::class, AlbumRow::class, TrackRow::class, GenreRow::class, TrackGenreRow::class,
         AlbumCreditRow::class, TrackCreditRow::class, PlaylistRow::class, PlaylistEntryRow::class,
