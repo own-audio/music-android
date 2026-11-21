@@ -5,6 +5,7 @@ All notable changes to own.audio Music for Android. The format follows
 
 ## [Unreleased]
 
+- Players wait through long signal gaps instead of failing as "stuck buffering" after ten minutes.
 - M4: the playback service and the music screens — Home (Shuffle All, Recently Played, Recently Added, Playlists), Library (artists, albums with every sort, songs, genres, favorites, concerts), album and artist pages, the song menu (Play Next, Add to Queue, Favorite, Rate), Search, the mini player and the full player with Queue, Sleep Timer, Crossfade and Volume Leveling, Lyrics and Equalizer; Settings gains Streaming and Playback. Plays in the background with the media notification, and the last queue comes back paused after a relaunch.
 - A privacy policy (PRIVACY.md), linked from Settings → About.
 - The music engine on Media3: playback links asked for when a song opens and renewed when they expire (never in a loop), the storage-route retry, a listening cache keyed by song rather than by link, a gapless queue whose edits never touch the playing song, crossfade on two players, ReplayGain from the server or the file's own tags (boosts through the equalizer's input gain), the 6-band equalizer, audio focus only from the first play, the decoder let go 30 s after a pause, and the last queue kept for the next launch.
