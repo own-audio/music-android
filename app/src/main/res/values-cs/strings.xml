@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tab_home">Domů</string>
+    <string name="tab_library">Knihovna</string>
+    <string name="tab_playlists">Playlisty</string>
+    <string name="tab_downloads">Stažené</string>
+    <string name="tab_search">Hledat</string>
+    <string name="placeholder_coming">Tahle obrazovka se ještě staví.</string>
+</resources>

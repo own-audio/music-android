@@ -17,7 +17,7 @@ the first of the three apps, so the foundation is written here) and the music ap
 
 | Phase | What | State |
 |---|---|---|
-| F0 | Repository, build, CI, empty tabs | ☐ |
+| F0 | Repository, build, CI, empty tabs | ☑ 2026-11-21 |
 | F1 | Look: tokens, theme, brand, shared composables | ☐ |
 | F2 | own.audio client `:kit:ownaudio` | ☐ |
 | F3 | Servers, addresses, network, answer cache | ☐ |
@@ -37,7 +37,7 @@ the first of the three apps, so the foundation is written here) and the music ap
 | F9 + M13 | Localization, accessibility, tablets, misuse tests, scale | ☐ |
 | F10 + M14 | Release: Play, F-Droid, guide | ☐ |
 
-**Where we stopped:** nothing built yet; this plan and the foundation document exist (2026-11-21).
+**Where we stopped:** F0 done 2026-11-21 (Gradle 9.9.2, AGP 9.5.2, Kotlin 2.4.21, compileSdk/targetSdk 37.2/37 — the current AndroidX releases need compileSdk 37; release APK 1.6 MB). book-android and podcast-android got the same skeleton the same day, so the three apps are built in parallel from here: shared modules land here first and are copied the same day. Next: F1.
 
 ## Rules for whoever executes this plan
 
