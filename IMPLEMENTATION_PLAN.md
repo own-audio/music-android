@@ -18,7 +18,7 @@ the first of the three apps, so the foundation is written here) and the music ap
 | Phase | What | State |
 |---|---|---|
 | F0 | Repository, build, CI, empty tabs | ☑ 2026-11-21 |
-| F1 | Look: tokens, theme, brand, shared composables | ☐ |
+| F1 | Look: tokens, theme, brand, shared composables | ☑ 2026-11-21 |
 | F2 | own.audio client `:kit:ownaudio` | ☐ |
 | F3 | Servers, addresses, network, answer cache | ☐ |
 | M1 | Music library layer and catalogue database | ☐ |
@@ -28,8 +28,8 @@ the first of the three apps, so the foundation is written here) and the music ap
 | F7 | Welcome, sign-in, server page, family, devices, listening, logs | ☐ |
 | M5 | Playlists and smart playlists | ☐ |
 | F5 + F6 + M6 | Downloads, offline, sync and outboxes | ☐ |
-| M7 | Subsonic / OpenSubsonic | ☐ |
-| M8 | Jellyfin | ☐ |
+| M7 | Subsonic / OpenSubsonic | ◐ `:kit:subsonic` done 2026-11-21 |
+| M8 | Jellyfin | ◐ `:kit:jellyfin` done 2026-11-21 |
 | M9 | Settings | ☐ |
 | M10 | own.audio extras: sharing, covers, concerts | ☐ |
 | M11 | Identify (MusicBrainz) | ☐ |
@@ -37,7 +37,7 @@ the first of the three apps, so the foundation is written here) and the music ap
 | F9 + M13 | Localization, accessibility, tablets, misuse tests, scale | ☐ |
 | F10 + M14 | Release: Play, F-Droid, guide | ☐ |
 
-**Where we stopped:** F0 done 2026-11-21 (Gradle 9.9.2, AGP 9.5.2, Kotlin 2.4.21, compileSdk/targetSdk 37.2/37 — the current AndroidX releases need compileSdk 37; release APK 1.6 MB). book-android and podcast-android got the same skeleton the same day, so the three apps are built in parallel from here: shared modules land here first and are copied the same day. Next: F1.
+**Where we stopped:** F0 and F1 done 2026-11-21 (Gradle 9.9.2, AGP 9.5.2, Kotlin 2.4.21, compileSdk 37.2; release APK 1.6 MB). The server clients `:kit:subsonic` and `:kit:jellyfin` are done (all live tests pass against Navidrome 0.64 and Jellyfin, Quick Connect included); `:kit:ownaudio` (F2) is in progress. The three apps are built in parallel: shared modules land here first and are copied to book-android and podcast-android the same day. Both kits define their own small `ResponseCache` and `NetworkLog` interfaces; `:core:servers` implements them (F3).
 
 ## Rules for whoever executes this plan
 
@@ -437,8 +437,10 @@ favourites made offline reach the server after reconnecting; eviction keeps the 
   `updatePlaylist`/`deletePlaylist`, `getLyricsBySongId` / `getLyrics`, `stream` (with `maxBitRate`,
   `format=mp3`), `download`, `getCoverArt`, `scrobble`.
 - `SubsonicSource : MusicSource`; catalogue by paging into Room (max age 6 h, Wi-Fi only).
-- Errors: Subsonic error codes 40/41 → wrong password; Ampache → "This server doesn't accept Subsonic
-  sign-in with a token" (unsupported).
+- Errors: error 40 is a wrong password, except from a server that names itself Ampache (it answers every
+  token sign-in with 40): that, and 41/42, are `TokenAuthUnsupported` → "This server doesn't accept Subsonic
+  sign-in with a token". 50 is "not authorized". `serverIdentity()` reads type and version from `ping` even
+  when sign-in fails.
 
 Read: music-ios `Packages/SubsonicKit/**`, `MusicLibrary/SubsonicSource.swift`; tests with
 `MockURLProtocol` → MockWebServer.
