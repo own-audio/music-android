@@ -5,6 +5,7 @@ All notable changes to own.audio Music for Android. The format follows
 
 ## [Unreleased]
 
+- A privacy policy (PRIVACY.md), linked from Settings → About.
 - The music engine on Media3: playback links asked for when a song opens and renewed when they expire (never in a loop), the storage-route retry, a listening cache keyed by song rather than by link, a gapless queue whose edits never touch the playing song, crossfade on two players, ReplayGain from the server or the file's own tags (boosts through the equalizer's input gain), the 6-band equalizer, audio focus only from the first play, the decoder let go 30 s after a pause, and the last queue kept for the next launch.
 - F7: the app shell and the own.audio screens — welcome, own.audio account (sign up, sign in, two-factor, Google in the Play build), Try the Demo Library, Add Server, Settings (servers, accent color, language, about, licences, logs), the server page (status and Check Now, sign in again, delete account, name, connection, addresses), Family with invitations and QR codes, Devices and Listening. Settings rows now use the text colour on their cards.
 - M1 and M2: the music library layer — one model over all servers, the catalogue on the phone in Room, and own.audio as a source fed by the sync snapshot and change feed (a failed re-sync leaves the old catalogue usable; a cut snapshot resumes where it stopped).
