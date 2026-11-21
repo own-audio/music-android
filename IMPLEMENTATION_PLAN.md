@@ -20,7 +20,7 @@ the first of the three apps, so the foundation is written here) and the music ap
 | F0 | Repository, build, CI, empty tabs | ☑ 2026-11-21 |
 | F1 | Look: tokens, theme, brand, shared composables | ☑ 2026-11-21 |
 | F2 | own.audio client `:kit:ownaudio` | ☑ 2026-11-21 |
-| F3 | Servers, addresses, network, answer cache | ☐ |
+| F3 | Servers, addresses, network, answer cache | ☑ 2026-11-21 (detection per kind comes with F7) |
 | M1 | Music library layer and catalogue database | ☐ |
 | M2 | own.audio as a music source | ☐ |
 | F4 + M3 | Player core and the music engine | ☐ |
@@ -37,7 +37,7 @@ the first of the three apps, so the foundation is written here) and the music ap
 | F9 + M13 | Localization, accessibility, tablets, misuse tests, scale | ☐ |
 | F10 + M14 | Release: Play, F-Droid, guide | ☐ |
 
-**Where we stopped:** F0 and F1 done 2026-11-21 (Gradle 9.9.2, AGP 9.5.2, Kotlin 2.4.21, compileSdk 37.2; release APK 1.6 MB). The server clients `:kit:subsonic` and `:kit:jellyfin` are done (all live tests pass against Navidrome 0.64 and Jellyfin, Quick Connect included); `:kit:ownaudio` (F2) is done too: 74 tests, live tests pass against the public demo, no /api/v1 anywhere; copied to book-android and podcast-android. The three apps are built in parallel: shared modules land here first and are copied to book-android and podcast-android the same day. Both kits define their own small `ResponseCache` and `NetworkLog` interfaces; `:core:servers` implements them (F3).
+**Where we stopped:** F0 and F1 done 2026-11-21 (Gradle 9.9.2, AGP 9.5.2, Kotlin 2.4.21, compileSdk 37.2; release APK 1.6 MB). The server clients `:kit:subsonic` and `:kit:jellyfin` are done (all live tests pass against Navidrome 0.64 and Jellyfin, Quick Connect included); `:kit:ownaudio` (F2) is done too: 74 tests, live tests pass against the public demo, no /api/v1 anywhere; copied to book-android and podcast-android. The three apps are built in parallel: shared modules land here first and are copied to book-android and podcast-android the same day. Both kits define their own small `ResponseCache` and `NetworkLog` interfaces; `:core:servers` (F3) is done: encrypted server records that never write stale tokens back, address scopes and racing by server identity, the network monitor, the offline switch, the answer cache; the per-kind detection flows come with the sign-in screens (F7).
 
 ## Rules for whoever executes this plan
 
