@@ -6,4 +6,15 @@
     <string name="tab_downloads">Downloads</string>
     <string name="tab_search">Search</string>
     <string name="placeholder_coming">This screen is still being built.</string>
+    <!-- F7: the music app's own wording. -->
+    <string name="onboarding_tagline">Your music, from your own server.</string>
+    <string name="onboarding_no_server_text">own.audio keeps your music for you. Upload it once and play it here.</string>
+    <string name="onboarding_demo_footnote">Sample music on a shared own.audio server, no account needed.</string>
+    <string name="onboarding_note_sign_in">Your sign-in stays on this device, encrypted. Subsonic servers get a one-time token made from the password; Jellyfin gives a token and the password isn\'t kept.</string>
+    <string name="address_placeholder">music.example.com</string>
+    <string name="add_server_placeholder">music.example.com or 192.168.1.10:4533</string>
+    <string name="add_server_footer">Works with own.audio, Navidrome and Jellyfin; the app finds out which. Without http:// or https://, it tries https and then http. Your sign-in stays on this device, encrypted.\n\nown.audio: sign in with your account\'s email and password.</string>
+    <string name="servers_footer">The library shows the selected server. Music from any server can stay in the queue.</string>
+    <string name="about_footer">own.audio Music is free and open source (MPL-2.0). It talks only to the servers you add.</string>
+    <string name="members_footer">What you add to the library is yours. Share songs from their menu, or a whole album or playlist; everyone in the family can then play them. Smart playlists can be shared too: each member gets their own selection.</string>
 </resources>

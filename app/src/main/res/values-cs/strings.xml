@@ -6,4 +6,15 @@
     <string name="tab_downloads">Stažené</string>
     <string name="tab_search">Hledat</string>
     <string name="placeholder_coming">Tahle obrazovka se ještě staví.</string>
+    <!-- F7: the music app's own wording. -->
+    <string name="onboarding_tagline">Vaše hudba z vašeho vlastního serveru.</string>
+    <string name="onboarding_no_server_text">own.audio vaši hudbu uchová za vás. Jednou ji nahrajte a přehrávejte ji tady.</string>
+    <string name="onboarding_demo_footnote">Ukázková hudba na sdíleném serveru own.audio, bez účtu.</string>
+    <string name="onboarding_note_sign_in">Přihlášení zůstává zašifrované v tomto zařízení. Servery Subsonic dostávají jednorázový token vytvořený z hesla; Jellyfin vydá token a heslo se neukládá.</string>
+    <string name="address_placeholder">music.example.com</string>
+    <string name="add_server_placeholder">music.example.com nebo 192.168.1.10:4533</string>
+    <string name="add_server_footer">Funguje s own.audio, Navidrome a Jellyfinem; aplikace sama zjistí, o který jde. Bez http:// nebo https:// zkusí https a pak http. Přihlášení zůstává zašifrované v tomto zařízení.\n\nown.audio: přihlaste se e-mailem a heslem ke svému účtu.</string>
+    <string name="servers_footer">Knihovna ukazuje vybraný server. Hudba z kteréhokoli serveru může zůstat ve frontě.</string>
+    <string name="about_footer">own.audio Music je zdarma a open source (MPL-2.0). Mluví jen se servery, které přidáte.</string>
+    <string name="members_footer">Co přidáte do knihovny, je vaše. Skladby sdílejte z jejich nabídky, nebo celé album či playlist; pak je může přehrát každý v rodině. Sdílet jdou i chytré playlisty: každý člen dostane vlastní výběr.</string>
 </resources>

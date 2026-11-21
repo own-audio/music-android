@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- own.audio's server logo (the iOS ServerLogo.svg): the family around a note. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="100dp" android:height="100dp" android:viewportWidth="100" android:viewportHeight="100">
+    <group android:rotation="0" android:pivotX="50" android:pivotY="50">
+        <path android:fillColor="#FABB05" android:pathData="M45.6,10a4.4,4.4 0,1 0,8.8,0a4.4,4.4 0,1 0,-8.8,0zM39.3,11a2.2,2.2 0,1 0,4.4,0a2.2,2.2 0,1 0,-4.4,0zM56.3,11a2.2,2.2 0,1 0,4.4,0a2.2,2.2 0,1 0,-4.4,0z" />
+    </group>
+    <group android:rotation="72" android:pivotX="50" android:pivotY="50">
+        <path android:fillColor="#29ABE2" android:pathData="M45.6,10a4.4,4.4 0,1 0,8.8,0a4.4,4.4 0,1 0,-8.8,0zM39.3,11a2.2,2.2 0,1 0,4.4,0a2.2,2.2 0,1 0,-4.4,0zM56.3,11a2.2,2.2 0,1 0,4.4,0a2.2,2.2 0,1 0,-4.4,0z" />
+    </group>
+    <group android:rotation="144" android:pivotX="50" android:pivotY="50">
+        <path android:fillColor="#FF3B30" android:pathData="M45.6,10a4.4,4.4 0,1 0,8.8,0a4.4,4.4 0,1 0,-8.8,0zM39.3,11a2.2,2.2 0,1 0,4.4,0a2.2,2.2 0,1 0,-4.4,0zM56.3,11a2.2,2.2 0,1 0,4.4,0a2.2,2.2 0,1 0,-4.4,0z" />
+    </group>
+    <group android:rotation="216" android:pivotX="50" android:pivotY="50">
+        <path android:fillColor="#FFCC00" android:pathData="M45.6,10a4.4,4.4 0,1 0,8.8,0a4.4,4.4 0,1 0,-8.8,0zM39.3,11a2.2,2.2 0,1 0,4.4,0a2.2,2.2 0,1 0,-4.4,0zM56.3,11a2.2,2.2 0,1 0,4.4,0a2.2,2.2 0,1 0,-4.4,0z" />
+    </group>
+    <group android:rotation="288" android:pivotX="50" android:pivotY="50">
+        <path android:fillColor="#34C759" android:pathData="M45.6,10a4.4,4.4 0,1 0,8.8,0a4.4,4.4 0,1 0,-8.8,0zM39.3,11a2.2,2.2 0,1 0,4.4,0a2.2,2.2 0,1 0,-4.4,0zM56.3,11a2.2,2.2 0,1 0,4.4,0a2.2,2.2 0,1 0,-4.4,0z" />
+    </group>
+    <group android:translateX="25.49" android:translateY="16.428" android:scaleX="2.58" android:scaleY="2.58">
+        <path android:strokeColor="#FF3B30" android:strokeWidth="1.75" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M8,18.5V8l7.5,-1.75v10.25" />
+        <path android:strokeColor="#FF3B30" android:strokeWidth="1.75" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M3.5,18.5a2.25,2.25 0,1 0,4.5,0a2.25,2.25 0,1 0,-4.5,0z" />
+        <path android:strokeColor="#FF3B30" android:strokeWidth="1.75" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M11,16.5a2.25,2.25 0,1 0,4.5,0a2.25,2.25 0,1 0,-4.5,0z" />
+    </group>
+</vector>

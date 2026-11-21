@@ -1,0 +1,236 @@
+package audio.own.musicplayer.settings
+
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
+import androidx.core.os.LocaleListCompat
+import audio.own.core.designsystem.components.AccentColorPicker
+import audio.own.musicplayer.ui.Section
+import audio.own.core.designsystem.components.ValueRow
+import audio.own.core.designsystem.theme.AccentChoice
+import audio.own.core.designsystem.theme.LocalPalette
+import audio.own.core.designsystem.theme.Tokens
+import audio.own.core.servers.ServerRecord
+import audio.own.core.strings.R
+import audio.own.musicplayer.R as AppR
+import audio.own.musicplayer.onboarding.SOURCE_URL
+import audio.own.musicplayer.servers.ServerKindIcon
+import audio.own.musicplayer.servers.kindTitle
+import audio.own.musicplayer.ui.ButtonRow
+import audio.own.musicplayer.ui.Page
+import audio.own.musicplayer.ui.RowDivider
+import audio.own.musicplayer.ui.TwoLines
+
+/** The in-app language, on top of the system's per-app language setting. */
+enum class AppLanguage(val tag: String?) {
+    SYSTEM(null),
+    ENGLISH("en"),
+    CZECH("cs"),
+    ;
+
+    companion object {
+        fun current(): AppLanguage {
+            val tag = AppCompatDelegate.getApplicationLocales()[0]?.language
+            return entries.firstOrNull { it.tag != null && it.tag == tag } ?: SYSTEM
+        }
+
+        fun apply(language: AppLanguage) {
+            AppCompatDelegate.setApplicationLocales(
+                language.tag?.let { LocaleListCompat.forLanguageTags(it) } ?: LocaleListCompat.getEmptyLocaleList(),
+            )
+        }
+    }
+}
+
+/** Each language's own name: not translated. */
+private fun AppLanguage.endonym(system: String) = when (this) {
+    AppLanguage.SYSTEM -> system
+    AppLanguage.ENGLISH -> "English"
+    AppLanguage.CZECH -> "Čeština"
+}
+
+data class SettingsUi(
+    val servers: List<ServerRecord>,
+    val activeId: String?,
+    val accent: AccentChoice,
+    val language: AppLanguage,
+    /** "1.0.0 (123)". */
+    val version: String,
+)
+
+@Composable
+fun SettingsContent(
+    ui: SettingsUi,
+    onBack: () -> Unit,
+    onOpenServer: (String) -> Unit,
+    onRemoveServer: (String) -> Unit,
+    onAddServer: () -> Unit,
+    onAccent: (AccentChoice) -> Unit,
+    onLanguage: (AppLanguage) -> Unit,
+    onLicences: () -> Unit,
+    onLogs: () -> Unit,
+) {
+    var removing by remember { mutableStateOf<ServerRecord?>(null) }
+    var choosingLanguage by remember { mutableStateOf(false) }
+    val links = LocalUriHandler.current
+    Page(title = stringResource(R.string.settings), onBack = onBack) {
+        Section(header = stringResource(R.string.servers), footer = stringResource(AppR.string.servers_footer)) {
+            ui.servers.forEach { server ->
+                ServerRow(server, selected = server.id == ui.activeId, onOpen = { onOpenServer(server.id) }, onRemove = { removing = server })
+                RowDivider(start = 64.dp)
+            }
+            ButtonRow(stringResource(R.string.add_a_server), onClick = onAddServer, icon = Icons.Filled.Add, color = MaterialTheme.colorScheme.primary)
+        }
+
+        AccentColorPicker(selected = ui.accent, onSelect = onAccent)
+
+        Section(header = null) {
+            val system = stringResource(R.string.language_system)
+            ValueRow(stringResource(R.string.language), ui.language.endonym(system), onClick = { choosingLanguage = true })
+        }
+
+        Section(header = stringResource(R.string.about), footer = stringResource(AppR.string.about_footer)) {
+            ValueRow(stringResource(R.string.version), ui.version, onClick = null)
+            RowDivider()
+            ButtonRow(stringResource(R.string.source_code_and_licence), onClick = { links.openUri(SOURCE_URL) }, color = MaterialTheme.colorScheme.primary)
+            RowDivider()
+            ButtonRow(stringResource(R.string.privacy), onClick = { links.openUri("$SOURCE_URL/blob/main/PRIVACY.md") }, color = MaterialTheme.colorScheme.primary)
+            RowDivider()
+            ButtonRow(stringResource(R.string.licences), onClick = onLicences, color = MaterialTheme.colorScheme.primary)
+            RowDivider()
+            ButtonRow(stringResource(R.string.logs), onClick = onLogs, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+
+    removing?.let { server ->
+        RemoveServerDialog(server.displayName, onConfirm = { onRemoveServer(server.id); removing = null }, onDismiss = { removing = null })
+    }
+    if (choosingLanguage) {
+        LanguageDialog(ui.language, onChoose = { onLanguage(it); choosingLanguage = false }, onDismiss = { choosingLanguage = false })
+    }
+}
+
+/** A server in the list: a tap opens its page, a swipe or its menu removes it, after asking. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ServerRow(server: ServerRecord, selected: Boolean, onOpen: () -> Unit, onRemove: () -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    val swipe = rememberSwipeToDismissBoxState()
+    LaunchedEffect(swipe.currentValue) {
+        if (swipe.currentValue == SwipeToDismissBoxValue.EndToStart) {
+            onRemove()
+            swipe.reset()
+        }
+    }
+    val palette = LocalPalette.current
+    SwipeToDismissBox(
+        state = swipe,
+        enableDismissFromStartToEnd = false,
+        backgroundContent = {
+            Box(Modifier.fillMaxSize().background(palette.error).padding(horizontal = Tokens.Spacing.lg), contentAlignment = Alignment.CenterEnd) {
+                Text(stringResource(R.string.remove), color = androidx.compose.ui.graphics.Color.White)
+            }
+        },
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .background(palette.backgroundAlt)
+                .heightIn(min = 60.dp)
+                .combinedClickable(onClick = onOpen, onLongClick = { menu = true })
+                .padding(start = Tokens.Spacing.lg, top = Tokens.Spacing.sm, bottom = Tokens.Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Tokens.Spacing.md),
+        ) {
+            ServerKindIcon(server.kind, size = 32.dp)
+            TwoLines(server.displayName, "${kindTitle(server.kind)} · ${server.auth.userName}", Modifier.weight(1f))
+            if (selected) Icon(Icons.Filled.Check, contentDescription = stringResource(R.string.selected), tint = palette.muted)
+            Box {
+                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more), tint = palette.muted) }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.remove), color = palette.error) },
+                        leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null, tint = palette.error) },
+                        onClick = { menu = false; onRemove() },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RemoveServerDialog(name: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.remove_server_question, name)) },
+        text = { Text(stringResource(R.string.remove_server_message)) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.remove), color = LocalPalette.current.error) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+@Composable
+private fun LanguageDialog(current: AppLanguage, onChoose: (AppLanguage) -> Unit, onDismiss: () -> Unit) {
+    val system = stringResource(R.string.language_system)
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.language)) },
+        text = {
+            Column {
+                AppLanguage.entries.forEach { language ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = Tokens.minTarget)
+                            .selectable(selected = language == current, role = Role.RadioButton) { onChoose(language) },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = language == current, onClick = null)
+                        Text(language.endonym(system), modifier = Modifier.padding(start = Tokens.Spacing.md))
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
