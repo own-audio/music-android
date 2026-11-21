@@ -27,7 +27,7 @@ the first of the three apps, so the foundation is written here) and the music ap
 | M4 | Browsing screens, mini player, full player | ◐ built 2026-11-21 and played on the demo (notification, background, last queue after relaunch, every player sheet); open: guide pages, the scrubber's look, tablet sidebar and output switcher not yet seen on screen |
 | F7 | Welcome, sign-in, server page, family, devices, listening, logs | ◐ built 2026-11-21 for own.audio and tried on the demo; Google waits for the OAuth clients, two-factor and account deletion tested against a fake server only |
 | M5 | Playlists and smart playlists | ◐ library side done 2026-11-21 (smart playlists, playlist edits and reorder); screens next |
-| F5 + F6 + M6 | Downloads, offline, sync and outboxes | ☐ |
+| F5 + F6 + M6 | Downloads, offline, sync and outboxes | ◐ built 2026-11-21: an album downloaded, survived a kill, played with no network. Open: a writable account to confirm an offline favourite is kept; per-item results from `/sync/push` so a refused change is undone on screen; the streamed copy swapped for the download at the next pause |
 | M7 | Subsonic / OpenSubsonic | ◐ kit and source done 2026-11-21 (live tests pass on Navidrome); app sign-in and wiring next |
 | M8 | Jellyfin | ◐ kit and source done 2026-11-21 (live tests pass); app sign-in, Quick Connect screen, library picker next |
 | M9 | Settings | ☐ |

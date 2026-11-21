@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     id("ownaudio.android.application")
     id("io.github.takahirom.roborazzi")
+    alias(libs.plugins.kotlin.serialization)
 }
 
 // Absent on CI and on a fresh clone: release then builds unsigned instead of failing.
@@ -45,6 +46,10 @@ dependencies {
     implementation(project(":library"))
     implementation(project(":player:core"))
     implementation(project(":player:music"))
+    implementation(project(":core:downloads"))
+    implementation(project(":core:sync"))
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.kotlinx.serialization.json)
     // CatalogueDatabase is a RoomDatabase: its supertype has to be on the app's classpath.
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.core.ktx)
@@ -78,4 +83,5 @@ dependencies {
     testImplementation(libs.roborazzi)
     testImplementation(libs.roborazzi.compose)
     testImplementation(libs.roborazzi.junit.rule)
+    testImplementation(libs.androidx.work.testing)
 }

@@ -25,6 +25,8 @@ import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Mic
@@ -52,6 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -95,10 +98,25 @@ class LibraryUi(
     val play: (songs: List<Song>, startId: String?, shuffle: Boolean, containerId: String?) -> Unit = { _, _, _, _ -> },
     val enqueue: (songs: List<Song>, next: Boolean) -> Unit = { _, _ -> },
     val setFavorite: (kind: FavoriteKind, id: String, on: Boolean) -> Unit = { _, _, _ -> },
-    val setRating: (id: String, rating: Int) -> Unit = { _, _ -> },
+    val setRating: (id: String, rating: Int, kind: FavoriteKind) -> Unit = { _, _, _ -> },
+    /** Downloads can be made from this server. */
+    val canDownload: Boolean = false,
+    /** Bumped when the downloads change, so rows read them again. */
+    val downloadsVersion: Int = 0,
+    val isDownloaded: (id: String) -> Boolean = { false },
+    /** (downloaded, total) of a downloaded album or playlist; null when it isn't. */
+    val collectionProgress: (collectionId: String) -> Pair<Int, Int>? = { null },
+    val isCollectionDownloading: (collectionId: String) -> Boolean = { false },
+    val downloadSong: (Song) -> Unit = {},
+    val downloadAlbum: (Album, List<Song>) -> Unit = { _, _ -> },
+    val removeDownload: (id: String) -> Unit = {},
+    val removeCollection: (collectionId: String) -> Unit = {},
 ) {
     fun isFavorite(song: Song) = isFavorite(song.id, song.isFavorite)
     fun rating(song: Song) = rating(song.id, song.rating)
+
+    /** Offline, a song that isn't downloaded can't play: its row is greyed out. */
+    fun isPlayable(song: Song) = !isOffline || isDownloaded(song.id)
 }
 
 val LocalLibraryUi = staticCompositionLocalOf { LibraryUi() }
@@ -241,9 +259,11 @@ fun SongRow(
     var menu by remember { mutableStateOf(false) }
     val isCurrent = ui.currentTrackId == song.id
     val starred = ui.isFavorite(song)
+    val downloaded = ui.isDownloaded(song.id)
     Row(
         modifier
             .fillMaxWidth()
+            .alpha(if (ui.isPlayable(song)) 1f else UNAVAILABLE_ALPHA)
             .heightIn(min = 56.dp)
             .combinedClickable(onClick = { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); onClick() }, onLongClick = { menu = true })
             .padding(start = Tokens.Spacing.screenEdge, top = Tokens.Spacing.xs, bottom = Tokens.Spacing.xs),
@@ -271,6 +291,9 @@ fun SongRow(
         if (starred) {
             Icon(Icons.Filled.Star, contentDescription = stringResource(R.string.favorite_badge), tint = Color(0xFFFFCC00), modifier = Modifier.size(14.dp))
         }
+        if (downloaded) {
+            Icon(Icons.Filled.DownloadDone, contentDescription = stringResource(SR.string.downloaded), tint = palette.muted, modifier = Modifier.size(14.dp))
+        }
         song.durationMs?.let {
             Text(formatDuration(it / 1000), style = MaterialTheme.typography.bodySmall.tabular(), color = palette.muted)
         }
@@ -283,10 +306,13 @@ fun SongRow(
     }
 }
 
+/** What a greyed-out row is drawn at: there, but not playable now. */
+const val UNAVAILABLE_ALPHA = 0.4f
+
 /**
- * The song's actions that work today: Play Next, Add to Queue, Favorite, Rate. The others of
- * the iOS menu (Add to Playlist, Instant Mix, covers, sharing, Identify, Download) come with the
- * phases that build them.
+ * The song's actions that work today: Play Next, Add to Queue, Favorite, Rate, Download or
+ * Remove Download. The others of the iOS menu (Add to Playlist, Instant Mix, covers, sharing,
+ * Identify) come with the phases that build them.
  */
 @Composable
 fun SongMenu(song: Song, expanded: Boolean, onDismiss: () -> Unit) {
@@ -303,9 +329,22 @@ fun SongMenu(song: Song, expanded: Boolean, onDismiss: () -> Unit) {
         if (ui.canRate) {
             RatingMenuItem(ui.rating(song)) { rating = true }
         }
+        if (ui.isDownloaded(song.id)) {
+            DropdownMenuItem(
+                text = { Text(stringResource(SR.string.remove_download)) },
+                leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+                onClick = { onDismiss(); ui.removeDownload(song.id) },
+            )
+        } else if (ui.canDownload && !ui.isOffline) {
+            DropdownMenuItem(
+                text = { Text(stringResource(SR.string.download)) },
+                leadingIcon = { Icon(Icons.Filled.Download, contentDescription = null) },
+                onClick = { onDismiss(); ui.downloadSong(song) },
+            )
+        }
     }
     if (rating) {
-        RatingChoices(ui.rating(song), onDismiss = { rating = false; onDismiss() }) { ui.setRating(song.id, it) }
+        RatingChoices(ui.rating(song), onDismiss = { rating = false; onDismiss() }) { ui.setRating(song.id, it, FavoriteKind.SONG) }
     }
 }
 

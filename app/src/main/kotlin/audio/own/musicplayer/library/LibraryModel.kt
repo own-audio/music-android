@@ -115,6 +115,17 @@ class LibraryModel(
     private var again = false
     private val syncedAt = ConcurrentHashMap<String, Long>()
 
+    /**
+     * Where favourites and ratings go when the server can't be reached: kept, and sent when it
+     * can (the outbox, set by the container once it exists).
+     */
+    interface OfflineChanges {
+        suspend fun favorite(kind: FavoriteKind, id: String, on: Boolean)
+        suspend fun rating(kind: FavoriteKind, id: String, rating: Int)
+    }
+
+    var offlineChanges: OfflineChanges? = null
+
     val activeServer: ServerRecord? get() = servers.state.value.active
     val activeSource: MusicSource? get() = servers.state.value.activeId?.let(registry::source)
 
@@ -158,6 +169,26 @@ class LibraryModel(
         }
     }
 
+    /**
+     * The active server's catalogue brought up to date now, waiting for it: the periodic
+     * background job. True when it worked or there was nothing to do.
+     */
+    suspend fun syncActiveNow(): Boolean {
+        val serverId = servers.state.value.activeId ?: return true
+        if (isOffline() || !canSyncNow()) return true
+        val source = registry.source(serverId) as? ChangeFeedCatalogue ?: return true
+        syncJob?.join()
+        return try {
+            val result = source.syncCatalogue()
+            syncedAt[serverId] = now()
+            _sync.update { it.copy(serverId = serverId, revision = if (result.changes > 0) it.revision + 1 else it.revision, lastSyncedAtMs = now()) }
+            true
+        } catch (error: Exception) {
+            log.error("library", "background sync failed: ${error.message}")
+            false
+        }
+    }
+
     private fun refreshFeatures(serverId: String) {
         val source = registry.source(serverId)
         _features.value = Features(serverId, source?.capabilities.orEmpty(), concerts = false)
@@ -183,28 +214,41 @@ class LibraryModel(
         return source.listener.current.ratings[raw] ?: fallback
     }
 
+    /**
+     * Shown at once. Offline, or when the server can't be reached, it is kept and sent later;
+     * a refusal puts it back.
+     */
     suspend fun setFavorite(kind: FavoriteKind, id: String, on: Boolean) {
         val source = registry.sourceOf(id) ?: return
         _favorites.update { it + (id to on) }
+        val outbox = offlineChanges
+        if (isOffline() && outbox != null) return outbox.favorite(kind, id, on)
         try {
             source.setFavorite(kind, id, on)
         } catch (error: Exception) {
+            if (outbox != null && isUnreachable(error)) return outbox.favorite(kind, id, on)
             _favorites.update { it - id }
             throw error
         }
     }
 
-    suspend fun setRating(id: String, rating: Int) {
+    /** A song's or an album's rating; the kind is the catalogue's, a song where it doesn't know. */
+    suspend fun setRating(id: String, rating: Int, kind: FavoriteKind = FavoriteKind.SONG) {
         val source = registry.sourceOf(id) ?: return
         val before = _ratings.value[id]
         _ratings.update { it + (id to rating) }
+        val outbox = offlineChanges
+        if (isOffline() && outbox != null) return outbox.rating(kind, id, rating)
         try {
             source.setRating(id, rating)
         } catch (error: Exception) {
+            if (outbox != null && isUnreachable(error)) return outbox.rating(kind, id, rating)
             _ratings.update { if (before == null) it - id else it + (id to before) }
             throw error
         }
     }
+
+    private fun isUnreachable(error: Exception) = error is audio.own.music.library.SourceError.Network || error is audio.own.music.library.SourceError.Offline
 
     /** A song as the lists show it, with what was changed here. */
     fun marked(song: Song): Song = song.copy(isFavorite = isFavorite(song.id, song.isFavorite), rating = rating(song.id, song.rating))

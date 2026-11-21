@@ -172,6 +172,7 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
             val context = LocalContext.current
             val playback by container.playbackSettings.settings.collectAsStateWithLifecycle()
             val eq by container.playbackSettings.equalizer.settings.collectAsStateWithLifecycle()
+            val downloads by container.downloads.state.collectAsStateWithLifecycle()
             SettingsContent(
                 ui = SettingsUi(
                     servers = servers.servers,
@@ -181,6 +182,7 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
                     version = "${container.versionName} (${container.versionCode})",
                     playback = playback,
                     equalizer = eq,
+                    downloadsBytes = downloads.totalBytes,
                 ),
                 onPlayback = { change -> container.playbackSettings.update(change) },
                 onEqualizer = { nav.navigate(Routes.EQUALIZER) },

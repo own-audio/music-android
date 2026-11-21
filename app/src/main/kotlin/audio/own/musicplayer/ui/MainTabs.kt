@@ -28,7 +28,15 @@ import audio.own.musicplayer.R
 import audio.own.musicplayer.home.HomeContent
 import audio.own.musicplayer.home.HomeShelf
 import audio.own.musicplayer.home.HomeUi
-import audio.own.musicplayer.library.DownloadsLater
+import audio.own.musicplayer.library.DownloadsRoute
+import audio.own.musicplayer.library.prefetchCover
+import audio.own.musicplayer.downloads.DownloadsModel
+import audio.own.musicplayer.downloads.OfflineAwareSource
+import audio.own.musicplayer.downloads.OfflineLibrary
+import audio.own.musicplayer.app.UserFacingException
+import audio.own.music.library.MusicSource
+import audio.own.music.library.model.Song
+import audio.own.core.servers.CompositeId
 import audio.own.musicplayer.library.HomeViewModel
 import audio.own.musicplayer.library.LibraryContent
 import audio.own.musicplayer.library.LibraryEnv
@@ -73,7 +81,7 @@ fun MainTabs(container: AppContainer, onSettings: () -> Unit, onOpenPlayer: () -
                     UnsupportedServer()
                     return@TabsScreen
                 }
-                val env = remember(source) { LibraryEnv(source, container.library, { container.offline.isOffline }, onError) }
+                val env = remember(source) { libraryEnv(container, source, onError) }
                 val nav = navs.getValue(selected)
                 when (selected) {
                     Tab.HOME -> NavHost(nav, startDestination = "home") {
@@ -86,7 +94,7 @@ fun MainTabs(container: AppContainer, onSettings: () -> Unit, onOpenPlayer: () -
                         libraryDestinations(nav, env)
                     }
                     Tab.DOWNLOADS -> NavHost(nav, startDestination = "downloads-root") {
-                        composable("downloads-root") { DownloadsLater(null) }
+                        composable("downloads-root") { DownloadsRoute(env, nav, null) }
                         libraryDestinations(nav, env)
                     }
                     Tab.SEARCH -> NavHost(nav, startDestination = "search") {
@@ -97,6 +105,32 @@ fun MainTabs(container: AppContainer, onSettings: () -> Unit, onOpenPlayer: () -
             }
         }
     }
+}
+
+/**
+ * The library pages' dependencies for [source]'s server: browsing goes through the offline
+ * library when there is no network, and the downloads and server names come along.
+ */
+@UnstableApi
+private fun libraryEnv(container: AppContainer, source: MusicSource, onError: (Throwable) -> Unit): LibraryEnv {
+    val offline = OfflineLibrary({ container.downloads.state.value }, source.serverId)
+    return LibraryEnv(
+        source = OfflineAwareSource(source, offline, { container.offline.isOffline }, { container.playbackSettings.current.offlineWholeLibrary }),
+        library = container.library,
+        isOffline = { container.offline.isOffline },
+        onError = onError,
+        downloads = container.downloads,
+        serverName = { id -> container.servers.state.value.server(id)?.displayName },
+        background = container.scope,
+    )
+}
+
+/** Offline, only downloaded songs play; a tapped song that isn't starts at the next that is. */
+internal fun playableOffline(songs: List<Song>, startId: String?, isDownloaded: (String) -> Boolean): Pair<List<Song>, String?> {
+    var start = startId
+    val index = start?.let { id -> songs.indexOfFirst { it.id == id } } ?: -1
+    if (index >= 0 && !isDownloaded(songs[index].id)) start = songs.drop(index).firstOrNull { isDownloaded(it.id) }?.id
+    return songs.filter { isDownloaded(it.id) } to start
 }
 
 /** A server whose kind this build can't browse yet (Subsonic and Jellyfin come with M7 and M8). */
@@ -114,10 +148,17 @@ private fun ProvideLibraryUi(container: AppContainer, onError: (Throwable) -> Un
     val ratings by container.library.ratings.collectAsStateWithLifecycle()
     val sync by container.library.sync.collectAsStateWithLifecycle()
     val offline by container.offlineState.collectAsStateWithLifecycle()
+    val downloadsState by container.downloads.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val library = container.library
     val model = container.playbackModel
-    val ui = remember(playback.currentTrack?.id, playback.isPlaying, features, favorites, ratings, sync.revision, offline.isOffline) {
+    val downloads = container.downloads
+    val background = container.scope
+    val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    val ui = remember(playback.currentTrack?.id, playback.isPlaying, features, favorites, ratings, sync.revision, offline.isOffline, downloadsState) {
+        val snapshot = downloadsState
+        val isDownloaded: (String) -> Boolean = snapshot::isDownloaded
+        val noneDownloaded = { onError(UserFacingException(R.string.offline_none_downloaded)) }
         LibraryUi(
             currentTrackId = playback.currentTrack?.id,
             isPlaying = playback.isPlaying,
@@ -126,10 +167,35 @@ private fun ProvideLibraryUi(container: AppContainer, onError: (Throwable) -> Un
             marksVersion = favorites.hashCode() + ratings.hashCode() + sync.revision,
             isFavorite = library::isFavorite,
             rating = library::rating,
-            play = { songs, start, shuffle, containerId -> model.play(songs, start, shuffle, containerId) },
-            enqueue = model::enqueue,
+            play = { songs, start, shuffle, containerId ->
+                if (!offline.isOffline) {
+                    model.play(songs, start, shuffle, containerId)
+                } else {
+                    val (playable, first) = playableOffline(songs, start, isDownloaded)
+                    if (playable.isEmpty()) noneDownloaded() else model.play(playable, first, shuffle, containerId)
+                }
+            },
+            enqueue = { songs, next ->
+                val playable = if (offline.isOffline) songs.filter { isDownloaded(it.id) } else songs
+                if (playable.isEmpty()) noneDownloaded() else model.enqueue(playable, next)
+            },
             setFavorite = { kind, id, on -> scope.launch { runCatching { library.setFavorite(kind, id, on) }.onFailure(onError) } },
-            setRating = { id, rating -> scope.launch { runCatching { library.setRating(id, rating) }.onFailure(onError) } },
+            setRating = { id, rating, kind -> scope.launch { runCatching { library.setRating(id, rating, kind) }.onFailure(onError) } },
+            canDownload = true,
+            downloadsVersion = snapshot.hashCode(),
+            isDownloaded = isDownloaded,
+            collectionProgress = snapshot::progress,
+            isCollectionDownloading = snapshot::isDownloading,
+            downloadSong = { song ->
+                prefetchCover(context, song.coverArt ?: song.albumId)
+                background.launch { downloads.download(song) }
+            },
+            downloadAlbum = { album, songs ->
+                prefetchCover(context, album.coverArt ?: album.id)
+                background.launch { downloads.download(album, songs) }
+            },
+            removeDownload = { id -> background.launch { downloads.remove(id) } },
+            removeCollection = { id -> background.launch { downloads.removeCollection(id) } },
         )
     }
     CompositionLocalProvider(LocalLibraryUi provides ui, content = content)
@@ -158,7 +224,7 @@ private fun BannerAndMiniPlayer(container: AppContainer, onOpenPlayer: () -> Uni
 @UnstableApi
 @Composable
 private fun HomeRoute(container: AppContainer, env: LibraryEnv, nav: NavHostController, onSettings: () -> Unit) {
-    val vm = viewModel { HomeViewModel(env.source, env.isOffline, env.onError) }
+    val vm = viewModel { HomeViewModel(env.source, env.isOffline, env.onError) { offlineHome(container, env.source) } }
     val content by vm.state.collectAsStateWithLifecycle()
     val refreshing by vm.refreshing.collectAsStateWithLifecycle()
     val shuffling by vm.shuffling.collectAsStateWithLifecycle()
@@ -230,6 +296,13 @@ private fun LibraryTab(container: AppContainer, env: LibraryEnv, nav: NavHostCon
             libraryDestinations(nav, env)
         }
     }
+}
+
+/** Home with no network: the albums by download date, the downloaded playlists. */
+@UnstableApi
+private suspend fun offlineHome(container: AppContainer, source: MusicSource): audio.own.musicplayer.library.HomeContentState {
+    val offline = OfflineLibrary({ container.downloads.state.value }, source.serverId)
+    return audio.own.musicplayer.library.HomeContentState(newest = offline.albumsByDownloadDate().take(20), playlists = offline.playlists())
 }
 
 private fun sidebarRoute(route: String, sort: String?): String = when (route) {

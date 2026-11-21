@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="tab_home">Home</string>
     <string name="tab_library">Library</string>
     <string name="tab_playlists">Playlists</string>
@@ -157,7 +157,6 @@
     <string name="songs_summary">%1$s, %2$d min</string>
     <string name="dot_join">%1$s · %2$s</string>
     <string name="coming_with_playlists">Playlists come with the next update.</string>
-    <string name="coming_with_downloads">Downloads come with a later update.</string>
     <plurals name="songs_count">
         <item quantity="one">%d song</item>
         <item quantity="other">%d songs</item>
@@ -170,4 +169,26 @@
         <item quantity="one">%d minute</item>
         <item quantity="other">%d minutes</item>
     </plurals>
+    <!-- Downloads and offline (F5, F6, M6) -->
+    <string name="downloading_title">Downloading %1$s</string>
+    <string name="downloading_music">Downloading music</string>
+    <string name="downloads_empty_text">Download an album or a playlist with the arrow on its page, or a song from its menu. It then plays without a network.</string>
+    <string name="on_this_device">On This Device</string>
+    <string name="downloading">Downloading</string>
+    <!-- The number is a count in brackets in Czech and never changes the words. -->
+    <string name="retry_n_failed" tools:ignore="PluralsCandidate">Retry %1$d Failed</string>
+    <string name="remove_all">Remove All</string>
+    <string name="remove_all_downloads_question">Remove all downloads?</string>
+    <string name="remove_all_downloads">Remove All Downloads</string>
+    <string name="remove_all_downloads_message">They stay on the server and can be downloaded again.</string>
+    <string name="n_of_m_downloaded" tools:ignore="PluralsCandidate">%1$d of %2$d downloaded</string>
+    <string name="removed_server">Removed server</string>
+    <string name="removed">Removed</string>
+    <string name="download_on_wifi_only">Download on Wi-Fi Only</string>
+    <string name="keep_at_most">Keep at Most</string>
+    <string name="no_limit">No Limit</string>
+    <string name="gigabytes">%1$d GB</string>
+    <string name="whole_library_offline">Whole Library When Offline</string>
+    <string name="downloads_offline_footer">Offline Mode shows and plays only what is on this device, as it does on its own with no network. Saves mobile data.\n\nWith Whole Library, the offline screens list everything on the server, from a copy of its catalog kept on this device; what isn\'t downloaded is grayed out. Albums open offline either way.\n\nOver the limit, the songs not played for longest go first; never the one playing.</string>
+    <string name="offline_none_downloaded">You\'re offline, and none of these songs are downloaded.</string>
 </resources>

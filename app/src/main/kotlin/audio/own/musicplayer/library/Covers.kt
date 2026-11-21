@@ -135,3 +135,15 @@ fun rememberCover(coverId: String?, size: Dp): Any? {
         ImageRequest.Builder(context).data(CoverRef.of(coverId, pixels)).crossfade(AppBrand.COVER_CROSSFADE_MS).build()
     }
 }
+
+/**
+ * Fetches a downloaded collection's cover into the disk cache at every size the screens draw
+ * (list rows, the album page, the player, the lock screen), so it shows offline too.
+ */
+fun prefetchCover(context: android.content.Context, coverId: String?) {
+    if (coverId == null) return
+    val loader = coil3.SingletonImageLoader.get(context)
+    for (pixels in listOf(120, 300, 600, 1000)) {
+        loader.enqueue(ImageRequest.Builder(context).data(CoverRef.of(coverId, pixels)).build())
+    }
+}

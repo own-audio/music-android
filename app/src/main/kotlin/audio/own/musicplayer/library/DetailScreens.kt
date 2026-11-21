@@ -34,6 +34,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import audio.own.core.designsystem.components.CoverArt
 import audio.own.core.designsystem.components.LoadStateView
+import audio.own.core.designsystem.components.SetDownloadButton
+import audio.own.core.designsystem.components.downloadingText
+import audio.own.musicplayer.downloads.DownloadsModel
 import audio.own.core.designsystem.theme.AppBrand
 import audio.own.core.designsystem.theme.LocalPalette
 import audio.own.core.designsystem.theme.Tokens
@@ -65,10 +68,23 @@ fun AlbumContent(state: Load<AlbumWithSongs>, known: Album?, onBack: () -> Unit,
     var menu by remember { mutableStateOf(false) }
     var rating by remember { mutableStateOf(false) }
     val title = album?.displayName().orEmpty()
+    val collectionId = album?.let { DownloadsModel.albumCollection(it.id) }.orEmpty()
+    val progress = album?.let { ui.collectionProgress(collectionId) }
     ListPage(
         title = title,
         onBack = onBack,
         actions = {
+            val songs = loaded?.songs.orEmpty()
+            if (album != null && ui.canDownload && (songs.isNotEmpty() || progress != null)) {
+                val (done, total) = progress ?: (0 to songs.size)
+                SetDownloadButton(
+                    done = done,
+                    total = total,
+                    downloading = progress != null && ui.isCollectionDownloading(collectionId),
+                    onDownload = { if (!ui.isOffline) ui.downloadAlbum(album, songs) },
+                    onRemove = { ui.removeCollection(collectionId) },
+                )
+            }
             if (album != null) FavoriteStar(FavoriteKind.ALBUM, album.id, album.isFavorite)
             if (album != null) {
                 Box {
@@ -78,7 +94,7 @@ fun AlbumContent(state: Load<AlbumWithSongs>, known: Album?, onBack: () -> Unit,
                         if (songs.isNotEmpty()) QueueMenuItems(songs) { menu = false }
                         if (ui.canRate) RatingMenuItem(ui.rating(album.id, album.rating)) { rating = true }
                     }
-                    if (rating) RatingChoices(ui.rating(album.id, album.rating), onDismiss = { rating = false; menu = false }) { ui.setRating(album.id, it) }
+                    if (rating) RatingChoices(ui.rating(album.id, album.rating), onDismiss = { rating = false; menu = false }) { ui.setRating(album.id, it, FavoriteKind.ALBUM) }
                 }
             }
         },
@@ -102,6 +118,9 @@ fun AlbumContent(state: Load<AlbumWithSongs>, known: Album?, onBack: () -> Unit,
                             }
                         }
                         album?.year?.let { Text(it.toString(), style = MaterialTheme.typography.bodyMedium, color = palette.muted) }
+                        if (progress != null && progress.first < progress.second && ui.isCollectionDownloading(collectionId)) {
+                            Text(downloadingText(progress.first, progress.second), style = MaterialTheme.typography.bodySmall, color = palette.muted)
+                        }
                     }
                     val songs = loaded?.songs.orEmpty()
                     val container = album?.let { "album:${it.id}" }

@@ -5,6 +5,7 @@ All notable changes to own.audio Music for Android. The format follows
 
 ## [Unreleased]
 
+- F5, F6 and M6: downloads and offline — albums, playlists and songs downloaded in the background (two at a time, resumed after the app is killed, Wi-Fi only if chosen, Keep at Most with the least recently played going first), the Downloads tab, Offline Mode and the offline banner, browsing downloads or the whole library offline, favorites, ratings and plays made offline sent later in one batch, live updates while the app is open, and an hourly refresh in the background.
 - The library side of smart playlists, playlist editing (description, reorder), sharing songs, albums and playlists with the family, your own covers and artist pictures (through uploads, by id), concert song marks and MusicBrainz identify (runs, review, live progress), all on own.audio's v2 API.
 - M7 and M8 (library side): Subsonic/OpenSubsonic and Jellyfin as music sources — browsing, every album order the server has, favorites, ratings (Subsonic), playlists, lyrics, Instant Mix (Jellyfin), ReplayGain and normalization gain, smaller streams, plays and session reports, and the catalogue on the phone read page by page (the catalogue database moves to version 2 to keep format and gain).
 - Players wait through long signal gaps instead of failing as "stuck buffering" after ten minutes.

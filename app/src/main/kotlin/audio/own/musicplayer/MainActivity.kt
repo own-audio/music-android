@@ -52,9 +52,14 @@ class MainActivity : AppCompatActivity() {
         super.onStart()
         container.engine.connect(this)
         container.library.syncActive()
+        container.sync.flushSoon()
+        container.sync.liveUpdates.setForeground(true)
     }
 
     override fun onStop() {
+        // Live updates only while a screen is open; nothing pushes to a phone in the background.
+        container.sync.liveUpdates.setForeground(false)
+        container.sync.flushSoon()
         container.playback.music.onBackground()
         container.engine.disconnect()
         super.onStop()

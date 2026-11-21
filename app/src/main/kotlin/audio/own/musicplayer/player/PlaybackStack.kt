@@ -3,6 +3,7 @@ package audio.own.musicplayer.player
 import androidx.core.content.edit
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -34,6 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -56,12 +58,18 @@ class PlaybackStack(
     private val offline: OfflineSwitch,
     private val offlineChanges: Flow<Boolean>,
     private val log: AppLog,
+    /** The storage route memory, shared with the downloads. */
+    val proxyMemory: ProxyMemory,
+    /** A downloaded song's file, which plays instead of a stream. Asked on the player's thread. */
+    private val localFile: (String) -> Uri? = { null },
+    /** A counted play, for the outbox (stored first, sent when the server can be reached). */
+    private val recordPlay: (suspend (trackId: String, startedAtMs: Long, heardMs: Long) -> Unit)? = null,
+    /** A song started: a downloaded one moves to the back of the line for Keep at Most. */
+    private val onTrackStarted: (String) -> Unit = {},
 ) {
     private val app = context.applicationContext
     private val main = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val io = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    val proxyMemory = ProxyMemory(PreferencesProxyStore(app.getSharedPreferences("storage-route", Context.MODE_PRIVATE)))
 
     val dataSources = PlaybackDataSources(
         context = app,
@@ -76,8 +84,7 @@ class PlaybackStack(
         MusicPlayer.Config(
             newDeck = { PlayerSetup.buildPlayer(app, dataSources.mediaSourceFactory(), ContentKind.MUSIC) },
             items = MusicMediaItems(
-                // Downloads come with F5: until then every song streams.
-                localFile = { null },
+                localFile = localFile,
                 artworkUri = { track -> track.artworkId?.let(Covers::artworkUri) },
             ),
             isFullyCached = dataSources::isFullyCached,
@@ -112,6 +119,7 @@ class PlaybackStack(
             }
         }
         main.launch { music.state.collect { if (it.isPlaying) _error.value = null } }
+        main.launch { music.state.map { it.currentTrack?.id }.distinctUntilChanged().collect { id -> id?.let(onTrackStarted) } }
         main.launch {
             settings.settings.collect { s ->
                 music.setCrossfade(s.crossfadeSecs)
@@ -140,10 +148,16 @@ class PlaybackStack(
             try {
                 when (event) {
                     is ScrobbleTracker.Event.NowPlaying -> sourceOf(event.key)?.reportNowPlaying(event.key, 0)
-                    is ScrobbleTracker.Event.Played -> sourceOf(event.key)?.reportPlayed(event.key, Instant.ofEpochMilli(event.startedAtMs))
+                    is ScrobbleTracker.Event.Played -> {
+                        val outbox = recordPlay
+                        if (outbox != null) {
+                            outbox(event.key, event.startedAtMs, (event.heardSecs * 1000).toLong())
+                        } else {
+                            sourceOf(event.key)?.reportPlayed(event.key, Instant.ofEpochMilli(event.startedAtMs))
+                        }
+                    }
                 }
             } catch (error: Exception) {
-                // The outbox for plays made offline comes with F6; until then a failed report is logged.
                 log.error("plays", "couldn't report a play: ${error.message}")
             }
         }

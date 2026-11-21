@@ -66,6 +66,10 @@ import audio.own.musicplayer.ui.Page
 import audio.own.musicplayer.ui.RowDivider
 import audio.own.musicplayer.ui.TwoLines
 
+/** "No Limit", "5 GB". */
+@Composable
+private fun keepAtMostTitle(gb: Int?): String = gb?.let { stringResource(AppR.string.gigabytes, it) } ?: stringResource(AppR.string.no_limit)
+
 /** The in-app language, on top of the system's per-app language setting. */
 enum class AppLanguage(val tag: String?) {
     SYSTEM(null),
@@ -103,6 +107,8 @@ data class SettingsUi(
     val version: String,
     val playback: PlaybackSettings = PlaybackSettings(),
     val equalizer: EqualizerSettings = EqualizerSettings(),
+    /** What the downloads take on this device. */
+    val downloadsBytes: Long = 0,
 )
 
 @Composable
@@ -118,12 +124,15 @@ fun SettingsContent(
     onLogs: () -> Unit,
     onPlayback: ((PlaybackSettings) -> PlaybackSettings) -> Unit = {},
     onEqualizer: () -> Unit = {},
+    onDownloads: (() -> Unit)? = null,
 ) {
     var removing by remember { mutableStateOf<ServerRecord?>(null) }
     var choosingLanguage by remember { mutableStateOf(false) }
     var choosingMobile by remember { mutableStateOf(false) }
     var choosingSaver by remember { mutableStateOf(false) }
+    var choosingCap by remember { mutableStateOf(false) }
     val playback = ui.playback
+    val context = androidx.compose.ui.platform.LocalContext.current
     val links = LocalUriHandler.current
     Page(title = stringResource(R.string.settings), onBack = onBack) {
         Section(header = stringResource(R.string.servers), footer = stringResource(AppR.string.servers_footer)) {
@@ -132,6 +141,18 @@ fun SettingsContent(
                 RowDivider(start = 64.dp)
             }
             ButtonRow(stringResource(R.string.add_a_server), onClick = onAddServer, icon = Icons.Filled.Add, color = MaterialTheme.colorScheme.primary)
+        }
+
+        Section(header = null, footer = stringResource(AppR.string.downloads_offline_footer)) {
+            ValueRow(stringResource(AppR.string.downloads), android.text.format.Formatter.formatFileSize(context, ui.downloadsBytes), onClick = onDownloads)
+            RowDivider()
+            SwitchRow(stringResource(AppR.string.offline_mode), playback.offlineMode, { on -> onPlayback { it.copy(offlineMode = on) } })
+            RowDivider()
+            SwitchRow(stringResource(AppR.string.download_on_wifi_only), playback.downloadsWifiOnly, { on -> onPlayback { it.copy(downloadsWifiOnly = on) } })
+            RowDivider()
+            ValueRow(stringResource(AppR.string.keep_at_most), keepAtMostTitle(playback.keepAtMostGb), onClick = { choosingCap = true })
+            RowDivider()
+            SwitchRow(stringResource(AppR.string.whole_library_offline), playback.offlineWholeLibrary, { on -> onPlayback { it.copy(offlineWholeLibrary = on) } })
         }
 
         Section(header = stringResource(AppR.string.streaming), footer = stringResource(AppR.string.streaming_footer)) {
@@ -185,6 +206,15 @@ fun SettingsContent(
             selected = playback.mobileData,
             onChoose = { choice -> onPlayback { it.copy(mobileData = choice) }; choosingMobile = false },
             onDismiss = { choosingMobile = false },
+        )
+    }
+    if (choosingCap) {
+        ChoiceDialog(
+            title = stringResource(AppR.string.keep_at_most),
+            choices = PlaybackSettings.KEEP_AT_MOST_CHOICES.map { it to keepAtMostTitle(it) },
+            selected = playback.keepAtMostGb,
+            onChoose = { choice -> onPlayback { it.copy(keepAtMostGb = choice) }; choosingCap = false },
+            onDismiss = { choosingCap = false },
         )
     }
     if (choosingSaver) {

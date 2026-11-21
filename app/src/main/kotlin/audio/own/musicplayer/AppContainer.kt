@@ -22,6 +22,14 @@ import audio.own.musicplayer.library.LibraryModel
 import audio.own.musicplayer.library.SourceRegistry
 import audio.own.musicplayer.player.PlaybackModel
 import audio.own.musicplayer.player.PlaybackStack
+import audio.own.musicplayer.player.PreferencesProxyStore
+import audio.own.musicplayer.downloads.DownloadsModel
+import audio.own.musicplayer.sync.AppSync
+import audio.own.music.library.FavoriteKind
+import audio.own.player.core.ProxyMemory
+import androidx.work.DelegatingWorkerFactory
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import audio.own.musicplayer.player.StackEngine
 import audio.own.musicplayer.servers.ServerDetector
 import audio.own.musicplayer.servers.ServersModel
@@ -136,12 +144,52 @@ class AppContainer(context: Context) {
 
     fun imageLoader(): ImageLoader = Covers.imageLoader(app, sources::sourceOf, bareHttp)
 
+    /** Where own.audio storage is blocked on this network: for streams and downloads alike. */
+    val proxyMemory = ProxyMemory(PreferencesProxyStore(app.getSharedPreferences("storage-route", Context.MODE_PRIVATE)))
+
+    val downloads: DownloadsModel = DownloadsModel(
+        context = app,
+        sourceOf = sources::sourceOf,
+        sourceForServer = sources::source,
+        serversLoaded = { servers.state.first { it.loaded } },
+        bareHttp = bareHttp,
+        userAgent = userAgent,
+        proxyMemory = proxyMemory,
+        settings = { playbackSettings.current },
+        settingsChanges = playbackSettings.settings,
+        playing = { if (playbackLazy.isInitialized()) playback.music.state.value.currentTrack?.id else null },
+        log = log,
+        scope = scope,
+    )
+
+    val sync: AppSync = AppSync(
+        context = app,
+        servers = servers,
+        sourceForServer = sources::source,
+        library = library,
+        isOffline = { offline.isOffline },
+        network = network.state,
+        log = log,
+        scope = scope,
+    ).also { sync ->
+        library.offlineChanges = object : LibraryModel.OfflineChanges {
+            override suspend fun favorite(kind: FavoriteKind, id: String, on: Boolean) = sync.recordFavorite(kind, id, on)
+            override suspend fun rating(kind: FavoriteKind, id: String, rating: Int) = sync.recordRating(kind, id, rating)
+        }
+    }
+
+    /** WorkManager's workers, with their dependencies: downloads and the periodic refresh. */
+    val workerFactory = DelegatingWorkerFactory().apply {
+        addFactory(downloads.workerFactory)
+        addFactory(sync.refreshWorkerFactory)
+    }
+
     /**
      * The player and its caches. Built on the first touch, on the main thread: by the media
      * service when Bluetooth, the system's controls or Auto bind it with no screen open, or by
      * the first screen.
      */
-    val playback: PlaybackStack by lazy {
+    private val playbackLazy: Lazy<PlaybackStack> = lazy {
         PlaybackStack(
             context = app,
             sourceOf = sources::sourceOf,
@@ -152,8 +200,13 @@ class AppContainer(context: Context) {
             offline = offline,
             offlineChanges = offlineState.map { it.isOffline },
             log = log,
+            proxyMemory = proxyMemory,
+            localFile = downloads::localFile,
+            recordPlay = { id, started, heard -> sync.recordPlay(id, started, heard) },
+            onTrackStarted = { id -> if (downloads.isDownloaded(id)) scope.launch { downloads.notePlayed(id) } },
         )
     }
+    val playback: PlaybackStack by playbackLazy
 
     val engine: StackEngine by lazy { StackEngine(playback) }
     val playbackModel: PlaybackModel by lazy { PlaybackModel(engine) }

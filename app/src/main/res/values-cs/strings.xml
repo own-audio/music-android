@@ -157,7 +157,6 @@
     <string name="songs_summary">%1$s, %2$d min</string>
     <string name="dot_join">%1$s · %2$s</string>
     <string name="coming_with_playlists">Playlisty přijdou s příští aktualizací.</string>
-    <string name="coming_with_downloads">Stahování přijde s pozdější aktualizací.</string>
     <plurals name="songs_count">
         <item quantity="one">%d skladba</item>
         <item quantity="few">%d skladby</item>
@@ -176,4 +175,25 @@
         <item quantity="many">%d minuty</item>
         <item quantity="other">%d minut</item>
     </plurals>
+    <!-- Stažené a offline (F5, F6, M6) -->
+    <string name="downloading_title">Stahuje se %1$s</string>
+    <string name="downloading_music">Stahuje se hudba</string>
+    <string name="downloads_empty_text">Album nebo playlist stáhnete šipkou na jeho stránce, skladbu z její nabídky. Pak hraje i bez sítě.</string>
+    <string name="on_this_device">V tomto zařízení</string>
+    <string name="downloading">Stahuje se</string>
+    <string name="retry_n_failed">Zkusit znovu nezdařené (%1$d)</string>
+    <string name="remove_all">Odebrat vše</string>
+    <string name="remove_all_downloads_question">Odebrat všechna stažená?</string>
+    <string name="remove_all_downloads">Odebrat všechna stažená</string>
+    <string name="remove_all_downloads_message">Na serveru zůstanou a můžete je stáhnout znovu.</string>
+    <string name="n_of_m_downloaded">staženo %1$d z %2$d</string>
+    <string name="removed_server">Odebraný server</string>
+    <string name="removed">Odebráno</string>
+    <string name="download_on_wifi_only">Stahovat jen přes Wi-Fi</string>
+    <string name="keep_at_most">Ponechat nejvýše</string>
+    <string name="no_limit">Bez omezení</string>
+    <string name="gigabytes">%1$d GB</string>
+    <string name="whole_library_offline">Celá knihovna offline</string>
+    <string name="downloads_offline_footer">Režim offline zobrazuje a přehrává jen to, co je v tomto zařízení, stejně jako bez sítě. Šetří mobilní data.\n\nS celou knihovnou ukazují offline obrazovky vše, co je na serveru, z kopie jeho katalogu uložené v tomto zařízení; co není stažené, je zašedlé. Alba se offline otevřou v obou případech.\n\nNad limitem jdou první skladby, které nehrály nejdéle; nikdy ne ta, která hraje.</string>
+    <string name="offline_none_downloaded">Jste offline a žádná z těchto skladeb není stažená.</string>
 </resources>

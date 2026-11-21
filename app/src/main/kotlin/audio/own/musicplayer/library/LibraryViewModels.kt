@@ -79,21 +79,21 @@ data class HomeContentState(
 }
 
 /**
- * Shuffle All and the three shelves. Offline only downloads count, and downloads come with F5:
- * until then the offline Home says there is nothing downloaded, as iOS does with none.
+ * Shuffle All and the three shelves. Offline only downloads count: the albums by download date
+ * and the downloaded playlists ([offlineHome]); Shuffle All draws from the downloaded songs.
  */
 class HomeViewModel(
     private val source: MusicSource,
     private val isOffline: () -> Boolean,
     private val onError: (Throwable) -> Unit = {},
-) : LoadViewModel<HomeContentState>({ home(source, isOffline()) }) {
+    offlineHome: suspend () -> HomeContentState = { HomeContentState() },
+) : LoadViewModel<HomeContentState>({ if (isOffline()) offlineHome() else home(source, false) }) {
     private val _shuffling = MutableStateFlow(false)
     val shuffling: StateFlow<Boolean> = _shuffling.asStateFlow()
 
     /** A random hundred from the whole library: the server picks, so it works for any size. */
     fun shuffleAll(play: (List<Song>) -> Unit) {
         if (_shuffling.value) return
-        if (isOffline()) return onError(SourceError.Offline())
         _shuffling.value = true
         viewModelScope.launch {
             try {
