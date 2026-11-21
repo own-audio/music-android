@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import audio.own.core.strings.R
 import audio.own.kit.ownaudio.OwnAudioException
+import audio.own.music.library.SourceError
 
 /**
  * Text a view model hands to the screen: a string resource with its arguments, so the words
@@ -33,6 +34,14 @@ class UserFacingException(val text: UiText, cause: Throwable? = null) : Exceptio
  */
 fun Throwable.userMessage(): UiText = when (this) {
     is UserFacingException -> text
+    is SourceError.Offline -> UiText(R.string.error_offline)
+    is SourceError.Network -> UiText(R.string.error_network)
+    is SourceError.SignInRejected -> UiText(R.string.error_sign_in_refused)
+    is SourceError.NotAllowed -> UiText(R.string.error_not_allowed)
+    is SourceError.NotFound -> UiText(R.string.error_not_found)
+    is SourceError.Unreadable -> UiText(R.string.error_unreadable)
+    is SourceError.Http -> UiText.of(R.string.error_http, status)
+    is SourceError -> UiText(R.string.error_generic)
     is OwnAudioException.Offline -> UiText(R.string.error_offline)
     is OwnAudioException.Network -> UiText(R.string.error_network)
     is OwnAudioException.SignInRefused, is OwnAudioException.SignedOut -> UiText(R.string.error_sign_in_refused)

@@ -17,8 +17,22 @@ import audio.own.musicplayer.app.AppLog
 import audio.own.musicplayer.app.AppPreferences
 import audio.own.musicplayer.app.DataStorePreferences
 import audio.own.musicplayer.app.LoggingInterceptor
+import audio.own.musicplayer.library.Covers
+import audio.own.musicplayer.library.LibraryModel
+import audio.own.musicplayer.library.SourceRegistry
+import audio.own.musicplayer.player.PlaybackModel
+import audio.own.musicplayer.player.PlaybackStack
+import audio.own.musicplayer.player.StackEngine
 import audio.own.musicplayer.servers.ServerDetector
 import audio.own.musicplayer.servers.ServersModel
+import audio.own.musicplayer.settings.PlaybackSettingsStore
+import audio.own.music.library.db.CatalogueDatabase
+import androidx.media3.common.util.UnstableApi
+import coil3.ImageLoader
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import java.io.File
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -32,6 +46,7 @@ import okhttp3.OkHttpClient
  * service without any screen having started, so the playback dependencies will be created here,
  * eagerly, rather than from the UI.
  */
+@UnstableApi
 class AppContainer(context: Context) {
     private val app = context.applicationContext
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -50,9 +65,30 @@ class AppContainer(context: Context) {
         .addInterceptor(LoggingInterceptor(log))
         .build()
 
+    /**
+     * For stream links, storage redirects and covers: never an Authorization header, so a token
+     * can't reach a storage host (docs/android-foundation.md §7.2).
+     */
+    val bareHttp: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .followSslRedirects(true)
+        .build()
+
     val preferences: AppPreferences = DataStorePreferences(app)
+    val playbackSettings = PlaybackSettingsStore(PlaybackSettingsStore.Shared(app.getSharedPreferences("playback", Context.MODE_PRIVATE)))
     val network = NetworkMonitor(app).also { it.start() }
     val offline = OfflineSwitch()
+
+    /** [offline] as screens watch it: offline at all, and whether by the listener's choice. */
+    private val _offlineState = MutableStateFlow(OfflineState())
+    val offlineState: StateFlow<OfflineState> = _offlineState.asStateFlow()
+
+    fun updateOffline() {
+        val s = playbackSettings.current
+        offline.update(s.offlineMode, network.state.value, s.mobileData)
+        _offlineState.value = OfflineState(offline.isOffline, offline.isOfflineByChoice, s.offlineMode)
+    }
     val answers = DiskAnswerCache(File(app.cacheDir, "server-responses"))
     val tokenSessions = TokenSessions()
     val serverStore = ServerStore(File(app.filesDir, "servers.bin"), KeystoreSecretBox("own.music.servers")) { log.error("servers", it) }
@@ -84,8 +120,49 @@ class AppContainer(context: Context) {
         scope = scope,
     )
 
+    /** Every server's catalogue; opened on first use, off the main thread. */
+    val catalogue: CatalogueDatabase by lazy { CatalogueDatabase.open(app) }
+
+    val sources = SourceRegistry(servers) { catalogue }
+
+    val library = LibraryModel(
+        servers = servers,
+        registry = sources,
+        isOffline = { offline.isOffline },
+        canSyncNow = { !network.state.value.dataSaver },
+        log = log,
+        scope = scope,
+    )
+
+    fun imageLoader(): ImageLoader = Covers.imageLoader(app, sources::sourceOf, bareHttp)
+
+    /**
+     * The player and its caches. Built on the first touch, on the main thread: by the media
+     * service when Bluetooth, the system's controls or Auto bind it with no screen open, or by
+     * the first screen.
+     */
+    val playback: PlaybackStack by lazy {
+        PlaybackStack(
+            context = app,
+            sourceOf = sources::sourceOf,
+            bareHttp = bareHttp,
+            userAgent = userAgent,
+            settings = playbackSettings,
+            network = network.state,
+            offline = offline,
+            offlineChanges = offlineState.map { it.isOffline },
+            log = log,
+        )
+    }
+
+    val engine: StackEngine by lazy { StackEngine(playback) }
+    val playbackModel: PlaybackModel by lazy { PlaybackModel(engine) }
+
     /** The header of a shared log: which app, which system. */
     val logHeader: String get() = "own.music $versionName ($versionCode), Android ${Build.VERSION.RELEASE}, ${Build.MANUFACTURER} ${Build.MODEL}"
 
     private fun appLocale(): Locale = AppCompatDelegate.getApplicationLocales()[0] ?: Locale.getDefault()
 }
+
+/** Offline at all; [byChoice] when Offline Mode or "Downloaded Only" on mobile data made it so. */
+data class OfflineState(val isOffline: Boolean = false, val byChoice: Boolean = false, val offlineMode: Boolean = false)

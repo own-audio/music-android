@@ -1,3 +1,5 @@
+@file:androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
+
 package audio.own.musicplayer.ui
 
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +51,22 @@ import audio.own.musicplayer.settings.SettingsContent
 import audio.own.musicplayer.settings.SettingsUi
 import audio.own.musicplayer.settings.shareLog
 import kotlinx.coroutines.launch
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import androidx.media3.common.util.UnstableApi
+import audio.own.core.designsystem.components.ErrorAlert
+import audio.own.musicplayer.R as AppR
+import audio.own.musicplayer.app.UiText
+import audio.own.musicplayer.app.text
+import audio.own.musicplayer.app.userMessage
+import audio.own.musicplayer.player.EqualizerBody
+import audio.own.musicplayer.player.PlayerRoute
+import kotlinx.coroutines.flow.MutableStateFlow
 
 private object Routes {
     const val MAIN = "main"
@@ -62,23 +80,39 @@ private object Routes {
     const val LISTENING = "listening/{id}"
     const val LOGS = "logs"
     const val LICENCES = "licences"
+    const val PLAYER = "player"
+    const val EQUALIZER = "equalizer"
 }
 
-/** The whole app: the theme with the chosen accent, the pages, and the two-factor step over them. */
+/**
+ * The whole app: the theme with the chosen accent, the pages, the two-factor step and the
+ * shared "That Didn't Work" dialog over them. [openPlayer] is set by the notification's tap.
+ */
+@UnstableApi
 @Composable
-fun AppRoot(container: AppContainer) {
+fun AppRoot(container: AppContainer, openPlayer: MutableStateFlow<Boolean> = MutableStateFlow(false)) {
     val accent by container.preferences.accent.collectAsState(initial = AccentChoice.APP)
     OwnAudioTheme(accent = accent) {
         Surface(color = MaterialTheme.colorScheme.background) {
             val nav = rememberNavController()
-            AppNavHost(container, nav)
+            var actionError by remember { mutableStateOf<UiText?>(null) }
+            val open by openPlayer.collectAsState()
+            LaunchedEffect(open) {
+                if (open) {
+                    openPlayer.value = false
+                    if (container.playbackModel.state.value.currentTrack != null && nav.currentDestination?.route != Routes.PLAYER) nav.navigate(Routes.PLAYER)
+                }
+            }
+            AppNavHost(container, nav, onError = { actionError = it.userMessage() })
             TwoFactorOverlay(container)
+            actionError?.let { ErrorAlert(it.text(), onDismiss = { actionError = null }) }
         }
     }
 }
 
+@UnstableApi
 @Composable
-private fun AppNavHost(container: AppContainer, nav: NavHostController) {
+private fun AppNavHost(container: AppContainer, nav: NavHostController, onError: (Throwable) -> Unit) {
     val servers by container.servers.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val back: () -> Unit = { nav.popBackStack() }
@@ -89,12 +123,32 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController) {
             when {
                 !servers.loaded -> LoadingScreen()
                 servers.servers.isEmpty() -> WelcomeRoute(container, onAccount = { nav.navigate("account/${it.name}") })
-                else -> TabsScreen(
-                    servers = servers.servers,
-                    activeId = servers.activeId,
-                    onSelectServer = { id -> scope.launch { container.servers.select(id) } },
+                else -> MainTabs(
+                    container,
                     onSettings = { nav.navigate(Routes.SETTINGS) },
+                    onOpenPlayer = { nav.navigate(Routes.PLAYER) { launchSingleTop = true } },
+                    onError = onError,
                 )
+            }
+        }
+        composable(
+            Routes.PLAYER,
+            enterTransition = { slideInVertically(tween(300)) { it } },
+            exitTransition = { slideOutVertically(tween(300)) { it } },
+            popEnterTransition = { slideInVertically(tween(300)) { it } },
+            popExitTransition = { slideOutVertically(tween(300)) { it } },
+        ) {
+            PlayerRoute(container, onClose = { if (nav.currentDestination?.route == Routes.PLAYER) nav.popBackStack() }, onError = onError)
+        }
+        composable(Routes.EQUALIZER) {
+            val eq by container.playbackSettings.equalizer.settings.collectAsStateWithLifecycle()
+            Page(
+                title = stringResource(AppR.string.equalizer),
+                onBack = back,
+                scrolls = false,
+                actions = { androidx.compose.material3.TextButton(onClick = container.playbackSettings.equalizer::reset, enabled = eq.enabled) { androidx.compose.material3.Text(stringResource(AppR.string.reset)) } },
+            ) {
+                EqualizerBody(container)
             }
         }
         composable(Routes.ACCOUNT) { entry ->
@@ -116,6 +170,8 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController) {
         }
         composable(Routes.SETTINGS) {
             val context = LocalContext.current
+            val playback by container.playbackSettings.settings.collectAsStateWithLifecycle()
+            val eq by container.playbackSettings.equalizer.settings.collectAsStateWithLifecycle()
             SettingsContent(
                 ui = SettingsUi(
                     servers = servers.servers,
@@ -123,7 +179,11 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController) {
                     accent = accent(container),
                     language = AppLanguage.current(),
                     version = "${container.versionName} (${container.versionCode})",
+                    playback = playback,
+                    equalizer = eq,
                 ),
+                onPlayback = { change -> container.playbackSettings.update(change) },
+                onEqualizer = { nav.navigate(Routes.EQUALIZER) },
                 onBack = back,
                 onOpenServer = { nav.navigate("server/$it") },
                 onRemoveServer = { id -> container.servers.scopeLaunch { container.servers.remove(id) } },

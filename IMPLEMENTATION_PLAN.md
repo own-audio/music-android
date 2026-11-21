@@ -23,8 +23,8 @@ the first of the three apps, so the foundation is written here) and the music ap
 | F3 | Servers, addresses, network, answer cache | ☑ 2026-11-21 (detection per kind comes with F7) |
 | M1 | Music library layer and catalogue database | ◐ built 2026-11-21 (100k tracks: insert 2.3 s, album page 3 ms on the JVM); 600k on a device still to measure |
 | M2 | own.audio as a music source | ◐ built 2026-11-21; the demo-server check comes with the screens (M4) |
-| F4 + M3 | Player core and the music engine | ◐ engine built 2026-11-21 (Media3: link resolver with expiry and storage-route retry, listening cache keyed by item, gapless queue, crossfade on two decks, ReplayGain incl. tags, EQ on DynamicsProcessing, last queue); the service and screens wire it in M4 |
-| M4 | Browsing screens, mini player, full player | ☐ |
+| F4 + M3 | Player core and the music engine | ◐ engine and service wired 2026-11-21 (release APK 7.25 MB); open: an audio measurement of gapless, concert chapters, the plays outbox (M6) |
+| M4 | Browsing screens, mini player, full player | ◐ built 2026-11-21 and played on the demo (notification, background, last queue after relaunch, every player sheet); open: guide pages, the scrubber's look, tablet sidebar and output switcher not yet seen on screen |
 | F7 | Welcome, sign-in, server page, family, devices, listening, logs | ◐ built 2026-11-21 for own.audio and tried on the demo; Google waits for the OAuth clients, two-factor and account deletion tested against a fake server only |
 | M5 | Playlists and smart playlists | ☐ |
 | F5 + F6 + M6 | Downloads, offline, sync and outboxes | ☐ |

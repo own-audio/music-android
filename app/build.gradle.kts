@@ -42,6 +42,11 @@ dependencies {
     implementation(project(":core:strings"))
     implementation(project(":core:servers"))
     implementation(project(":kit:ownaudio"))
+    implementation(project(":library"))
+    implementation(project(":player:core"))
+    implementation(project(":player:music"))
+    // CatalogueDatabase is a RoomDatabase: its supertype has to be on the app's classpath.
+    implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.activity.compose)

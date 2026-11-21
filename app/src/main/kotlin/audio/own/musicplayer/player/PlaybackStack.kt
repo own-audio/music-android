@@ -1,0 +1,167 @@
+package audio.own.musicplayer.player
+
+import androidx.core.content.edit
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import audio.own.core.servers.NetworkState
+import audio.own.core.servers.OfflineSwitch
+import audio.own.music.library.MusicSource
+import audio.own.musicplayer.app.AppLog
+import audio.own.musicplayer.library.Covers
+import audio.own.musicplayer.settings.PlaybackSettingsStore
+import audio.own.player.core.ContentKind
+import audio.own.player.core.DiskResumeStore
+import audio.own.player.core.ListeningCache
+import audio.own.player.core.PlaybackDataSources
+import audio.own.player.core.PlayerSetup
+import audio.own.player.core.ProxyMemory
+import audio.own.player.music.MusicMediaItems
+import audio.own.player.music.MusicPlayer
+import audio.own.player.music.ScrobbleTracker
+import audio.own.player.music.lastQueueStore
+import java.io.File
+import java.time.Instant
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
+
+/**
+ * Everything playback needs, built once per process on the main thread: the listening cache, the
+ * data source chain over the link resolver, and the music engine with the listener's settings.
+ * The media service puts a session on it; the screens drive it through [PlaybackModel].
+ */
+@UnstableApi
+class PlaybackStack(
+    context: Context,
+    private val sourceOf: (String) -> MusicSource?,
+    bareHttp: OkHttpClient,
+    userAgent: String,
+    private val settings: PlaybackSettingsStore,
+    private val network: StateFlow<NetworkState>,
+    private val offline: OfflineSwitch,
+    private val offlineChanges: Flow<Boolean>,
+    private val log: AppLog,
+) {
+    private val app = context.applicationContext
+    private val main = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val io = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    val proxyMemory = ProxyMemory(PreferencesProxyStore(app.getSharedPreferences("storage-route", Context.MODE_PRIVATE)))
+
+    val dataSources = PlaybackDataSources(
+        context = app,
+        resolver = AppLinkResolver(sourceOf),
+        httpClient = bareHttp,
+        cache = ListeningCache.open(app),
+        proxyMemory = proxyMemory,
+        userAgent = userAgent,
+    )
+
+    val music = MusicPlayer(
+        MusicPlayer.Config(
+            newDeck = { PlayerSetup.buildPlayer(app, dataSources.mediaSourceFactory(), ContentKind.MUSIC) },
+            items = MusicMediaItems(
+                // Downloads come with F5: until then every song streams.
+                localFile = { null },
+                artworkUri = { track -> track.artworkId?.let(Covers::artworkUri) },
+            ),
+            isFullyCached = dataSources::isFullyCached,
+            prefetchSource = dataSources.cacheDataSourceFactory,
+            maxBitrateKbps = { settings.current.maxBitrateKbps(network.value) },
+            isOffline = { offline.isOffline },
+            // On mobile data only what is playing is fetched.
+            canPrefetch = { network.value.connected && !network.value.metered },
+            lastQueue = lastQueueStore(File(app.filesDir, "last-queue.json")),
+            resumeStore = DiskResumeStore(File(app.filesDir, "resume.json")),
+        ),
+    )
+
+    /** The last load failure, until the next song starts. */
+    private val _error = MutableStateFlow<PlaybackException?>(null)
+    val error: StateFlow<PlaybackException?> = _error.asStateFlow()
+
+    /** The service's session follows the active deck: set by the service while it runs. */
+    var onActivePlayerChanged: ((Player) -> Unit)? = null
+
+    init {
+        music.listener = object : MusicPlayer.Listener {
+            override fun onActivePlayerChanged(player: Player) {
+                onActivePlayerChanged?.invoke(player)
+            }
+
+            override fun onScrobble(event: ScrobbleTracker.Event) = report(event)
+
+            override fun onPlaybackError(error: PlaybackException, stopped: Boolean) {
+                log.error("player", "${error.errorCodeName}: ${error.cause?.message ?: error.message}${if (stopped) " (stopped)" else ""}")
+                _error.value = error
+            }
+        }
+        main.launch { music.state.collect { if (it.isPlaying) _error.value = null } }
+        main.launch {
+            settings.settings.collect { s ->
+                music.setCrossfade(s.crossfadeSecs)
+                music.setReplayGainMode(s.replayGain)
+            }
+        }
+        main.launch { settings.equalizer.settings.collect(music::setEqualizer) }
+        // A new cap or going offline rebuilds what is still to come; the song playing stays.
+        main.launch {
+            combine(settings.settings, network, offlineChanges) { s, n, off -> s.maxBitrateKbps(n) to off }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect { music.refreshUpcoming() }
+        }
+        main.launch { network.collect { proxyMemory.network = it.signature } }
+        music.restoreLastQueue()
+    }
+
+    fun clearError() {
+        _error.value = null
+    }
+
+    private fun report(event: ScrobbleTracker.Event) {
+        if (!settings.current.reportPlays) return
+        io.launch {
+            try {
+                when (event) {
+                    is ScrobbleTracker.Event.NowPlaying -> sourceOf(event.key)?.reportNowPlaying(event.key, 0)
+                    is ScrobbleTracker.Event.Played -> sourceOf(event.key)?.reportPlayed(event.key, Instant.ofEpochMilli(event.startedAtMs))
+                }
+            } catch (error: Exception) {
+                // The outbox for plays made offline comes with F6; until then a failed report is logged.
+                log.error("plays", "couldn't report a play: ${error.message}")
+            }
+        }
+    }
+}
+
+/** The storage-route memory between launches, in its own small preferences file. */
+class PreferencesProxyStore(private val prefs: SharedPreferences) : ProxyMemory.Store {
+    private val serializer = MapSerializer(String.serializer(), Long.serializer())
+
+    override fun load(): Map<String, Long> =
+        prefs.getString(KEY, null)?.let { runCatching { Json.decodeFromString(serializer, it) }.getOrNull() }.orEmpty()
+
+    override fun save(entries: Map<String, Long>) {
+        prefs.edit { putString(KEY, Json.encodeToString(serializer, entries)) }
+    }
+
+    private companion object {
+        const val KEY = "entries"
+    }
+}

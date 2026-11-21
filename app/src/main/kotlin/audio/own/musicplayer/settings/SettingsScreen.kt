@@ -45,7 +45,13 @@ import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import audio.own.core.designsystem.components.AccentColorPicker
 import audio.own.musicplayer.ui.Section
+import audio.own.core.designsystem.components.SwitchRow
 import audio.own.core.designsystem.components.ValueRow
+import audio.own.core.servers.MobileData
+import audio.own.musicplayer.player.CrossfadeSection
+import audio.own.musicplayer.player.LevelingSection
+import audio.own.musicplayer.player.title
+import audio.own.player.music.EqualizerSettings
 import audio.own.core.designsystem.theme.AccentChoice
 import audio.own.core.designsystem.theme.LocalPalette
 import audio.own.core.designsystem.theme.Tokens
@@ -95,6 +101,8 @@ data class SettingsUi(
     val language: AppLanguage,
     /** "1.0.0 (123)". */
     val version: String,
+    val playback: PlaybackSettings = PlaybackSettings(),
+    val equalizer: EqualizerSettings = EqualizerSettings(),
 )
 
 @Composable
@@ -108,9 +116,14 @@ fun SettingsContent(
     onLanguage: (AppLanguage) -> Unit,
     onLicences: () -> Unit,
     onLogs: () -> Unit,
+    onPlayback: ((PlaybackSettings) -> PlaybackSettings) -> Unit = {},
+    onEqualizer: () -> Unit = {},
 ) {
     var removing by remember { mutableStateOf<ServerRecord?>(null) }
     var choosingLanguage by remember { mutableStateOf(false) }
+    var choosingMobile by remember { mutableStateOf(false) }
+    var choosingSaver by remember { mutableStateOf(false) }
+    val playback = ui.playback
     val links = LocalUriHandler.current
     Page(title = stringResource(R.string.settings), onBack = onBack) {
         Section(header = stringResource(R.string.servers), footer = stringResource(AppR.string.servers_footer)) {
@@ -121,7 +134,28 @@ fun SettingsContent(
             ButtonRow(stringResource(R.string.add_a_server), onClick = onAddServer, icon = Icons.Filled.Add, color = MaterialTheme.colorScheme.primary)
         }
 
+        Section(header = stringResource(AppR.string.streaming), footer = stringResource(AppR.string.streaming_footer)) {
+            ValueRow(stringResource(AppR.string.on_mobile_data), stringResource(playback.mobileData.title), onClick = { choosingMobile = true })
+            if (playback.mobileData == MobileData.SAVER) {
+                RowDivider()
+                ValueRow(stringResource(AppR.string.saver_quality), stringResource(AppR.string.kbps, playback.saverKbps), onClick = { choosingSaver = true })
+            }
+        }
+
+        CrossfadeSection(playback, onCrossfade = { on -> onPlayback { it.copy(crossfadeEnabled = on) } }, onFade = { secs -> onPlayback { it.copy(fadeSecs = secs) } })
+
+        LevelingSection(playback.replayGain) { mode -> onPlayback { it.copy(replayGain = mode) } }
+
+        Section(header = null) {
+            val summary = if (!ui.equalizer.enabled) stringResource(AppR.string.eq_off) else ui.equalizer.preset?.let { stringResource(it.title) } ?: stringResource(AppR.string.custom)
+            ValueRow(stringResource(AppR.string.equalizer), summary, onClick = onEqualizer)
+        }
+
         AccentColorPicker(selected = ui.accent, onSelect = onAccent)
+
+        Section(header = null, footer = stringResource(AppR.string.report_plays_footer)) {
+            SwitchRow(stringResource(AppR.string.report_plays), playback.reportPlays, { on -> onPlayback { it.copy(reportPlays = on) } })
+        }
 
         Section(header = null) {
             val system = stringResource(R.string.language_system)
@@ -143,6 +177,24 @@ fun SettingsContent(
 
     removing?.let { server ->
         RemoveServerDialog(server.displayName, onConfirm = { onRemoveServer(server.id); removing = null }, onDismiss = { removing = null })
+    }
+    if (choosingMobile) {
+        ChoiceDialog(
+            title = stringResource(AppR.string.on_mobile_data),
+            choices = MobileData.entries.map { it to stringResource(it.title) },
+            selected = playback.mobileData,
+            onChoose = { choice -> onPlayback { it.copy(mobileData = choice) }; choosingMobile = false },
+            onDismiss = { choosingMobile = false },
+        )
+    }
+    if (choosingSaver) {
+        ChoiceDialog(
+            title = stringResource(AppR.string.saver_quality),
+            choices = PlaybackSettings.SAVER_CHOICES.map { it to stringResource(AppR.string.kbps, it) },
+            selected = playback.saverKbps,
+            onChoose = { choice -> onPlayback { it.copy(saverKbps = choice) }; choosingSaver = false },
+            onDismiss = { choosingSaver = false },
+        )
     }
     if (choosingLanguage) {
         LanguageDialog(ui.language, onChoose = { onLanguage(it); choosingLanguage = false }, onDismiss = { choosingLanguage = false })
@@ -206,6 +258,39 @@ fun RemoveServerDialog(name: String, onConfirm: () -> Unit, onDismiss: () -> Uni
         text = { Text(stringResource(R.string.remove_server_message)) },
         confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.remove), color = LocalPalette.current.error) } },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+private val MobileData.title: Int
+    get() = when (this) {
+        MobileData.ORIGINAL -> AppR.string.mobile_original
+        MobileData.SAVER -> AppR.string.mobile_saver
+        MobileData.DOWNLOADED_ONLY -> AppR.string.mobile_downloaded_only
+    }
+
+/** A picker row's choices: one tap chooses and closes, as an iOS menu picker does. */
+@Composable
+fun <T> ChoiceDialog(title: String, choices: List<Pair<T, String>>, selected: T, onChoose: (T) -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column {
+                choices.forEach { (value, label) ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = Tokens.minTarget)
+                            .selectable(selected = value == selected, role = Role.RadioButton) { onChoose(value) },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = value == selected, onClick = null)
+                        Text(label, modifier = Modifier.padding(start = Tokens.Spacing.md))
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
