@@ -25,6 +25,8 @@ import java.time.Instant
 class FakeMusicSource(
     val albums: List<Album> = (1..150).map { Album("s|a$it", "Album $it", artist = "Artist ${it % 7}", songCount = 3) },
     val playlists: List<Playlist> = listOf(Playlist("s|p1", "Mix", songCount = 12)),
+    /** A song's artist by song id; none when missing. */
+    val songArtists: Map<String, String> = emptyMap(),
 ) : MusicSource {
     val calls = mutableListOf<String>()
     var failing: Exception? = null
@@ -34,7 +36,7 @@ class FakeMusicSource(
     override val capabilities = setOf(Capability.RATINGS)
     override val albumSorts = AlbumSort.entries.toList()
 
-    fun songsOf(albumId: String) = (1..3).map { Song("$albumId-t$it", "Song $it", album = albumId, albumId = albumId, track = it, durationMs = 60_000) }
+    fun songsOf(albumId: String) = (1..3).map { Song("$albumId-t$it", "Song $it", album = albumId, albumId = albumId, artistId = songArtists["$albumId-t$it"], track = it, durationMs = 60_000) }
 
     private fun check() { failing?.let { throw it } }
 

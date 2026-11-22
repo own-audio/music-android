@@ -115,6 +115,30 @@ class CatalogueDaoTest {
         assertEquals(listOf("Help!", "abbey Road"), dao.albumsOfArtist(SERVER, "beatles").map { it.album.title })
     }
 
+    // Found on a real library: over half of its artists had songs only on compilations, and
+    // their pages were empty, with Play and Shuffle off and "0 albums" in the list.
+    @Test fun `an artist with songs only on someone else's album has that album`() = runBlocking {
+        library()
+        write(
+            gen = 1,
+            items = arrayOf(
+                "contributor" to contributorJson("various", "Various Artists"),
+                "contributor" to contributorJson("maniacs", "10,000 Maniacs"),
+                "album" to albumJson("hits", "Hits", credits = credits("various"), releaseDate = "1995"),
+                "track" to trackJson("h1", "Because the Night", albumId = "hits", credits = credits("maniacs")),
+                "track" to trackJson("h2", "Dancing Queen (Live)", albumId = "hits", credits = credits("abba")),
+            ),
+        )
+        val counts = dao.artists(SERVER).associate { it.artist.name to it.albumCount }
+        assertEquals(1, counts["10,000 Maniacs"])
+        assertEquals(2, counts["ABBA"])
+        assertEquals(1, counts["Various Artists"])
+        assertEquals(listOf("Hits"), dao.albumsOfArtist(SERVER, "maniacs").map { it.album.title })
+        assertEquals(listOf("Arrival", "Hits"), dao.albumsOfArtist(SERVER, "abba").map { it.album.title })
+        // A featured guest only still has no albums of their own.
+        assertEquals(emptyList<String>(), dao.albumsOfArtist(SERVER, "guest").map { it.album.title })
+    }
+
     @Test fun `genres with counts, and a genre's albums through any of a track's genres`() = runBlocking {
         library()
         val genres = dao.genres(SERVER).associateBy { it.name }

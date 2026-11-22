@@ -308,14 +308,7 @@ private fun HomeRoute(container: AppContainer, env: LibraryEnv, nav: NavHostCont
     val sync by container.library.sync.collectAsStateWithLifecycle()
     val offline by container.offlineState.collectAsStateWithLifecycle()
     // The catalogue caught up, or the network came or went: the shelves again.
-    var seen by remember { mutableStateOf(sync.revision to offline.isOffline) }
-    LaunchedEffect(sync.revision, offline.isOffline) {
-        val now = sync.revision to offline.isOffline
-        if (now != seen) {
-            seen = now
-            vm.refresh()
-        }
-    }
+    LaunchedEffect(sync.revision, offline.isOffline) { vm.showFor(sync.revision to offline.isOffline) }
     val model = container.playbackModel
     HomeContent(
         ui = HomeUi(

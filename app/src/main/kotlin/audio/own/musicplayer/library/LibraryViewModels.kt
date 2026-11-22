@@ -93,6 +93,17 @@ class HomeViewModel(
     private val _shuffling = MutableStateFlow(false)
     val shuffling: StateFlow<Boolean> = _shuffling.asStateFlow()
 
+    // Kept here, not in the screen: the network can go while another tab is open and Home's
+    // screen is gone, and on the way back its shelves were still the online ones.
+    private var shownFor: Any? = null
+
+    /** The catalogue's revision and the network as the screen sees them: the shelves again when either changed since. */
+    fun showFor(key: Any) {
+        val was = shownFor
+        shownFor = key
+        if (was != null && was != key) refresh()
+    }
+
     /** A random hundred from the whole library: the server picks, so it works for any size. */
     fun shuffleAll(play: (List<Song>) -> Unit) {
         if (_shuffling.value) return
@@ -232,20 +243,26 @@ class AlbumViewModel(source: MusicSource, albumId: String) : LoadViewModel<Album
 
 class ArtistViewModel(
     private val source: MusicSource,
-    artistId: String,
+    private val artistId: String,
     private val onError: (Throwable) -> Unit = {},
 ) : LoadViewModel<List<Album>>({ source.albums(artistId) }) {
     private val _starting = MutableStateFlow(false)
     val starting: StateFlow<Boolean> = _starting.asStateFlow()
 
-    /** Every album's songs, one request per album, in the order the albums are listed. */
+    /**
+     * Every album's songs, one request per album, in the order the albums are listed; from an
+     * album credited to someone else (a compilation) only the artist's own songs.
+     */
     fun playAll(play: (List<Song>) -> Unit) {
         val albums = (state.value as? Load.Loaded)?.value ?: return
         if (_starting.value) return
         _starting.value = true
         viewModelScope.launch {
             try {
-                val songs = albums.flatMap { runCatching { source.album(it.id).songs }.getOrDefault(emptyList()) }
+                val songs = albums.flatMap { album ->
+                    val all = runCatching { source.album(album.id).songs }.getOrDefault(emptyList())
+                    if (album.artistId == artistId) all else all.filter { it.artistId == artistId }.ifEmpty { all }
+                }
                 if (songs.isEmpty()) onError(SourceError.NotFound()) else play(songs)
             } finally {
                 _starting.value = false

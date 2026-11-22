@@ -21,8 +21,13 @@ private const val ALBUM_MARKS = """
 // `+c.albumId` keeps SQLite on the (serverId, contributorId, role) index: for COUNT(DISTINCT
 // albumId) it otherwise picks the primary key's, ordered by album, and reads every credit of
 // the server once per artist (minutes for 6,000 artists of a 600k-song library on a phone).
+// The second count is the albums the artist has songs on without being credited on the album
+// (compilations), as the server's `albums?contributor_id=` lists them.
 private const val ARTIST_COLUMNS = """a.*,
-    (SELECT COUNT(DISTINCT +c.albumId) FROM album_credit c WHERE c.serverId = a.serverId AND c.contributorId = a.id AND c.role = 'artist') AS albumCount,
+    (SELECT COUNT(DISTINCT +c.albumId) FROM album_credit c WHERE c.serverId = a.serverId AND c.contributorId = a.id AND c.role = 'artist')
+    + (SELECT COUNT(DISTINCT t.albumId) FROM track_credit tc JOIN track t ON t.serverId = tc.serverId AND t.id = tc.trackId
+        WHERE tc.serverId = a.serverId AND tc.contributorId = a.id AND tc.role = 'artist' AND t.albumId IS NOT NULL
+        AND NOT EXISTS(SELECT 1 FROM album_credit c2 WHERE c2.serverId = t.serverId AND c2.albumId = t.albumId AND c2.contributorId = a.id AND c2.role = 'artist')) AS albumCount,
     EXISTS(SELECT 1 FROM favourite f WHERE f.serverId = a.serverId AND f.kind = 'contributor' AND f.id = a.id) AS isFavorite"""
 
 /**
@@ -279,10 +284,12 @@ interface CatalogueDao {
     )
     suspend fun albumsHighestRated(serverId: String, limit: Int, offset: Int): List<AlbumView>
 
-    /** Every album crediting the artist as one, oldest first as a discography reads. */
+    /** Every album crediting the artist as one or with a song of theirs, oldest first as a discography reads. */
     @Query(
         """SELECT al.*, $ALBUM_MARKS FROM album al WHERE al.serverId = :serverId AND al.id IN
-        (SELECT c.albumId FROM album_credit c WHERE c.serverId = :serverId AND c.contributorId = :artistId AND c.role = 'artist')
+        (SELECT c.albumId FROM album_credit c WHERE c.serverId = :serverId AND c.contributorId = :artistId AND c.role = 'artist'
+        UNION SELECT t.albumId FROM track_credit tc JOIN track t ON t.serverId = tc.serverId AND t.id = tc.trackId
+        WHERE tc.serverId = :serverId AND tc.contributorId = :artistId AND tc.role = 'artist')
         ORDER BY al.year IS NULL, al.year, al.title""",
     )
     suspend fun albumsOfArtist(serverId: String, artistId: String): List<AlbumView>

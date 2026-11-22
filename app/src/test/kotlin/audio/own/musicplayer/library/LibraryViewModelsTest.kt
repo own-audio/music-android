@@ -1,6 +1,7 @@
 package audio.own.musicplayer.library
 
 import audio.own.music.library.AlbumSort
+import audio.own.music.library.model.Album
 import audio.own.music.library.SourceError
 import audio.own.musicplayer.app.Load
 import kotlinx.coroutines.Dispatchers
@@ -53,6 +54,27 @@ class LibraryViewModelsTest {
         advanceUntilIdle()
         assertTrue((vm.state.value as Load.Loaded).value.isEmpty)
         assertTrue(source.calls.isEmpty())
+    }
+
+    // Found on the emulator: the network went while the Search tab was open; back on Home the
+    // shelf said Downloaded Albums but still showed the server's newest albums.
+    @Test
+    fun homeShowsTheDownloadsAfterTheNetworkWentWhileAwayFromIt() = runTest(main) {
+        var offline = false
+        val downloaded = HomeContentState(newest = listOf(Album("s|dl", "Downloaded")))
+        val vm = HomeViewModel(FakeMusicSource(), isOffline = { offline }, offlineHome = { downloaded })
+        vm.showFor(1L to false)
+        advanceUntilIdle()
+        assertEquals(20, (vm.state.value as Load.Loaded).value.newest.size)
+        offline = true
+        // Home's screen was gone meanwhile; it comes back seeing the new state for the first time.
+        vm.showFor(1L to true)
+        advanceUntilIdle()
+        assertEquals(listOf("s|dl"), (vm.state.value as Load.Loaded).value.newest.map { it.id })
+        // The same state again asks nothing.
+        vm.showFor(1L to true)
+        advanceUntilIdle()
+        assertEquals(listOf("s|dl"), (vm.state.value as Load.Loaded).value.newest.map { it.id })
     }
 
     @Test
@@ -179,6 +201,21 @@ class LibraryViewModelsTest {
         assertEquals(6, ids.size)
         assertEquals("s|a1-t1", ids.first())
         assertEquals("s|a2-t3", ids.last())
+    }
+
+    // An artist with one song on a compilation: Play played the whole compilation.
+    @Test
+    fun artistPlaysOnlyTheirOwnSongsFromSomeoneElsesAlbum() = runTest(main) {
+        val albums = listOf(
+            Album("s|a1", "Own Album", artist = "Band", artistId = "s|r1", songCount = 3),
+            Album("s|a2", "Hits", artist = "Various Artists", artistId = "s|va", songCount = 3),
+        )
+        val vm = ArtistViewModel(FakeMusicSource(albums, songArtists = mapOf("s|a2-t2" to "s|r1")), "s|r1")
+        advanceUntilIdle()
+        var ids = emptyList<String>()
+        vm.playAll { songs -> ids = songs.map { it.id } }
+        advanceUntilIdle()
+        assertEquals(listOf("s|a1-t1", "s|a1-t2", "s|a1-t3", "s|a2-t2"), ids)
     }
 
     @Test

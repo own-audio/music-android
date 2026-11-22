@@ -379,19 +379,21 @@ class LibraryModel(
         }
     }
 
+    /**
+     * Favourites and ratings an own.audio server took from here: from then on its records say
+     * what they are, so a change made on another device shows here too.
+     */
+    private val settled: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     /** Whether [id] is a favourite: as changed here, else as the server's records say. */
     fun isFavorite(id: String, fallback: Boolean): Boolean {
-        _favorites.value[id]?.let { return it }
-        val (serverId, raw) = CompositeId.split(id) ?: return fallback
-        val source = registry.source(serverId) as? OwnAudioSource ?: return fallback
-        return raw in source.listener.current.favourites || fallback
+        val listener = CompositeId.split(id)?.let { (serverId, raw) -> (registry.source(serverId) as? OwnAudioSource)?.listener?.current?.let { raw in it.favourites } }
+        return Marks.favourite(_favorites.value[id], "fav:$id" in settled, listener, fallback)
     }
 
     fun rating(id: String, fallback: Int?): Int? {
-        _ratings.value[id]?.let { return it.takeIf { r -> r > 0 } }
-        val (serverId, raw) = CompositeId.split(id) ?: return fallback
-        val source = registry.source(serverId) as? OwnAudioSource ?: return fallback
-        return source.listener.current.ratings[raw] ?: fallback
+        val listener = CompositeId.split(id)?.let { (serverId, raw) -> (registry.source(serverId) as? OwnAudioSource)?.listener?.current?.let { it.ratings[raw] ?: 0 } }
+        return Marks.rating(_ratings.value[id], "rating:$id" in settled, listener, fallback)
     }
 
     /**
@@ -400,11 +402,13 @@ class LibraryModel(
      */
     suspend fun setFavorite(kind: FavoriteKind, id: String, on: Boolean) {
         val source = registry.sourceOf(id) ?: return
+        settled -= "fav:$id"
         _favorites.update { it + (id to on) }
         val outbox = offlineChanges
         if (isOffline() && outbox != null) return outbox.favorite(kind, id, on)
         try {
             source.setFavorite(kind, id, on)
+            if (source is OwnAudioSource) settled += "fav:$id"
         } catch (error: Exception) {
             if (outbox != null && isUnreachable(error)) return outbox.favorite(kind, id, on)
             _favorites.update { it - id }
@@ -416,11 +420,13 @@ class LibraryModel(
     suspend fun setRating(id: String, rating: Int, kind: FavoriteKind = FavoriteKind.SONG) {
         val source = registry.sourceOf(id) ?: return
         val before = _ratings.value[id]
+        settled -= "rating:$id"
         _ratings.update { it + (id to rating) }
         val outbox = offlineChanges
         if (isOffline() && outbox != null) return outbox.rating(kind, id, rating)
         try {
             source.setRating(id, rating)
+            if (source is OwnAudioSource) settled += "rating:$id"
         } catch (error: Exception) {
             if (outbox != null && isUnreachable(error)) return outbox.rating(kind, id, rating)
             _ratings.update { if (before == null) it - id else it + (id to before) }
@@ -442,5 +448,27 @@ class LibraryModel(
     companion object {
         /** A catalogue fed by the change feed is caught up at most every ten minutes. */
         const val MAX_AGE_MS = 10 * 60 * 1000L
+    }
+}
+
+/**
+ * What a favourite or a rating shows: a change made here wins until the server has taken it;
+ * after that an own.audio server's records ([serverSays], null for other servers) do. Before,
+ * a favourite set here stayed on for the session even after it was removed on another device.
+ */
+internal object Marks {
+    fun favourite(changedHere: Boolean?, taken: Boolean, serverSays: Boolean?, fallback: Boolean): Boolean = when {
+        taken && serverSays != null -> serverSays
+        changedHere != null -> changedHere
+        serverSays != null -> serverSays || fallback
+        else -> fallback
+    }
+
+    /** [serverSays] is 0 for none. */
+    fun rating(changedHere: Int?, taken: Boolean, serverSays: Int?, fallback: Int?): Int? = when {
+        taken && serverSays != null -> serverSays.takeIf { it > 0 }
+        changedHere != null -> changedHere.takeIf { it > 0 }
+        serverSays != null -> serverSays.takeIf { it > 0 } ?: fallback
+        else -> fallback
     }
 }
