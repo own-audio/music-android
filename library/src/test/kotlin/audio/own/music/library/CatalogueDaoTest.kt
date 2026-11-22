@@ -72,6 +72,24 @@ class CatalogueDaoTest {
         assertEquals(listOf("abbey Road", "Help!", "Arrival"), dao.albumsNewest(SERVER, 10, 0).map { it.album.title })
     }
 
+    @Test fun `by artist, albums with no artist come last, also across a page's edge`() = runBlocking {
+        library()
+        write(gen = 1, items = arrayOf("album" to albumJson("loose", "Loose Ends", credits = "[]", releaseDate = null)))
+        val whole = dao.albumsByArtistName(SERVER, 10, 0).map { it.album.title }
+        assertEquals(listOf("Arrival", "Help!", "abbey Road", "Loose Ends"), whole)
+        assertEquals(whole, (0 until 4).flatMap { dao.albumsByArtistName(SERVER, 1, it) }.map { it.album.title })
+        assertEquals(listOf("abbey Road", "Loose Ends"), dao.albumsByArtistName(SERVER, 2, 2).map { it.album.title })
+        assertEquals(listOf("Loose Ends"), dao.albumsByArtistName(SERVER, 5, 3).map { it.album.title })
+        assertEquals(emptyList<String>(), dao.albumsByArtistName(SERVER, 5, 4).map { it.album.title })
+    }
+
+    @Test fun `songs by title page without gaps or repeats`() = runBlocking {
+        library()
+        val whole = dao.tracksByTitle(SERVER, 50, 0).map { it.track.id }
+        assertEquals(6, whole.size)
+        assertEquals(whole, (0 until 6).flatMap { dao.tracksByTitle(SERVER, 1, it) }.map { it.track.id })
+    }
+
     @Test fun `a shuffle stays the same across pages for one seed`() = runBlocking {
         library()
         val whole = dao.albumsShuffled(SERVER, 42, 10, 0).map { it.album.id }

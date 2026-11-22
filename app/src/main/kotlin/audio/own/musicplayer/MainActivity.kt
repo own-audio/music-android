@@ -8,6 +8,7 @@ import android.provider.MediaStore
 import audio.own.musicplayer.platform.MusicLinks
 import audio.own.musicplayer.platform.VoiceSearch
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -36,6 +37,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // Phones stay upright, as on iOS; tablets and unfolded foldables turn with the device.
+        if (resources.configuration.smallestScreenWidthDp < TABLET_MIN_WIDTH_DP) requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
         notifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
         // After a rotation the same intent comes back; it was handled the first time.
         if (savedInstanceState == null) readIntent(intent)
@@ -70,7 +73,11 @@ class MainActivity : AppCompatActivity() {
         super.onStop()
     }
 
-    /** Space plays and pauses, Ctrl+→ / Ctrl+← skip, on tablets and Chromebooks; a text field takes them first. */
+    /**
+     * A keyboard on a tablet or a Chromebook, wherever the app is: Space plays and pauses,
+     * Ctrl+→ and Ctrl+← skip. A text field or the open player takes them first; Esc is left to
+     * the system, which makes it Back.
+     */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         val model = container.playbackModel
         if (model.state.value.currentTrack != null) {
@@ -123,5 +130,6 @@ class MainActivity : AppCompatActivity() {
         const val EXTRA_OPEN_PLAYER = "openPlayer"
         const val ACTION_CONTINUE = "audio.own.musicplayer.CONTINUE_LISTENING"
         private const val ASKED = "notificationsAsked"
+        private const val TABLET_MIN_WIDTH_DP = 600
     }
 }

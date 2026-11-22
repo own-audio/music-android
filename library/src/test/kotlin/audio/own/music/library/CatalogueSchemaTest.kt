@@ -44,8 +44,8 @@ class CatalogueSchemaTest {
         }
     }
 
-    /** A phone with a version 1 catalogue keeps it: the gain and format columns are added, empty. */
-    @Test fun `version 1 migrates to 2 keeping its rows`() = runBlocking {
+    /** A phone with a version 1 catalogue keeps it: the gain and format columns are added, empty, and the search index widened. */
+    @Test fun `version 1 migrates to the latest keeping its rows`() = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         val file = context.getDatabasePath("migrate-test.db").also { it.parentFile?.mkdirs(); it.delete() }
         val v1 = (Json.parseToJsonElement(File("schemas/audio.own.music.library.db.CatalogueDatabase/1.json").readText()) as JsonObject)["database"]!!.jsonObject

@@ -104,6 +104,7 @@ fun HomeContent(
     ListPage(
         title = stringResource(R.string.tab_home),
         onBack = null,
+        maxContentWidth = null,
         actions = {
             if (ui.servers.size > 1) ServerMenu(ui.servers, ui.activeId, onSelectServer)
             IconToggleButton(checked = ui.offlineMode, onCheckedChange = onOfflineMode) {
@@ -180,7 +181,7 @@ private fun Shelf(title: String, onClick: () -> Unit, content: androidx.compose.
     val palette = LocalPalette.current
     Column(verticalArrangement = Arrangement.spacedBy(Tokens.Spacing.sm)) {
         Row(
-            Modifier.padding(horizontal = Tokens.Spacing.sm).clickable(onClick = onClick).padding(horizontal = Tokens.Spacing.sm, vertical = Tokens.Spacing.xs).semantics { heading() },
+            Modifier.padding(horizontal = Tokens.Spacing.sm).heightIn(min = Tokens.minTarget).clickable(onClick = onClick).padding(horizontal = Tokens.Spacing.sm, vertical = Tokens.Spacing.xs).semantics { heading() },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold))

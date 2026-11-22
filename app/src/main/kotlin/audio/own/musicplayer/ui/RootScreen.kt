@@ -28,8 +28,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.window.core.layout.WindowSizeClass
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import audio.own.musicplayer.R
@@ -84,9 +84,13 @@ private fun Placeholder() {
     }
 }
 
-/** Wide windows (tablets, Chromebooks): the Library tab gets its permanent sidebar. */
+/**
+ * Expanded windows (tablets in landscape, Chromebooks, a large foldable open): the Library tab
+ * gets its permanent sidebar. The same size class the navigation suite reads, so the sidebar
+ * comes with the rail and never with the bottom bar.
+ */
 @Composable
-fun isWide(): Boolean = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() } >= 840.dp
+fun isWide(): Boolean = currentWindowAdaptiveInfo().windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
 
 /** A sidebar beside [content], inside the iPad's 220–320 dp. */
 @Composable

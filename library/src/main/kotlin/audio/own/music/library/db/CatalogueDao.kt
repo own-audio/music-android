@@ -16,8 +16,11 @@ private const val ALBUM_MARKS = """
     EXISTS(SELECT 1 FROM favourite f WHERE f.serverId = al.serverId AND f.kind = 'album' AND f.id = al.id) AS isFavorite,
     (SELECT r.rating FROM rating r WHERE r.serverId = al.serverId AND r.kind = 'album' AND r.id = al.id) AS rating"""
 
+// `+c.albumId` keeps SQLite on the (serverId, contributorId, role) index: for COUNT(DISTINCT
+// albumId) it otherwise picks the primary key's, ordered by album, and reads every credit of
+// the server once per artist (minutes for 6,000 artists of a 600k-song library on a phone).
 private const val ARTIST_COLUMNS = """a.*,
-    (SELECT COUNT(DISTINCT c.albumId) FROM album_credit c WHERE c.serverId = a.serverId AND c.contributorId = a.id AND c.role = 'artist') AS albumCount,
+    (SELECT COUNT(DISTINCT +c.albumId) FROM album_credit c WHERE c.serverId = a.serverId AND c.contributorId = a.id AND c.role = 'artist') AS albumCount,
     EXISTS(SELECT 1 FROM favourite f WHERE f.serverId = a.serverId AND f.kind = 'contributor' AND f.id = a.id) AS isFavorite"""
 
 /**
@@ -180,16 +183,48 @@ interface CatalogueDao {
     @Query("SELECT $ARTIST_COLUMNS FROM artist a WHERE a.serverId = :serverId AND a.id IN (:ids)")
     suspend fun artistsByIds(serverId: String, ids: List<String>): List<ArtistView>
 
-    @Query("SELECT al.*, $ALBUM_MARKS FROM album al WHERE al.serverId = :serverId ORDER BY al.title, al.id LIMIT :limit OFFSET :offset")
-    suspend fun albumsByName(serverId: String, limit: Int, offset: Int): List<AlbumView>
+    // The browsing pages pick their rows first by rowid alone, which an index answers without
+    // touching the table, and only then read those rows and their marks: OFFSET otherwise reads
+    // every skipped row in full (seconds deep into a 600k-song list). Rows that sort the same
+    // keep the order they were written in (rowid), which the indexes carry for free.
 
     @Query(
-        """SELECT al.*, $ALBUM_MARKS FROM album al WHERE al.serverId = :serverId
-        ORDER BY al.artistLine IS NULL, al.artistLine, al.year, al.title, al.id LIMIT :limit OFFSET :offset""",
+        """SELECT al.*, $ALBUM_MARKS FROM album al WHERE al.rowid IN
+        (SELECT rowid FROM album WHERE serverId = :serverId ORDER BY title, rowid LIMIT :limit OFFSET :offset)
+        ORDER BY al.title, al.rowid""",
     )
-    suspend fun albumsByArtistName(serverId: String, limit: Int, offset: Int): List<AlbumView>
+    suspend fun albumsByName(serverId: String, limit: Int, offset: Int): List<AlbumView>
 
-    @Query("SELECT al.*, $ALBUM_MARKS FROM album al WHERE al.serverId = :serverId ORDER BY al.createdAtMs DESC, al.id LIMIT :limit OFFSET :offset")
+    /** By the artist line, a discography's order under each; albums without one come last. */
+    suspend fun albumsByArtistName(serverId: String, limit: Int, offset: Int): List<AlbumView> {
+        // Two queries rather than ORDER BY artistLine IS NULL, which no index can serve.
+        val named = albumsWithArtistLine(serverId, limit, offset)
+        if (named.size == limit) return named
+        val skipped = maxOf(offset - albumsWithArtistLineCount(serverId), 0)
+        return named + albumsWithoutArtistLine(serverId, limit - named.size, skipped)
+    }
+
+    @Query(
+        """SELECT al.*, $ALBUM_MARKS FROM album al WHERE al.rowid IN
+        (SELECT rowid FROM album WHERE serverId = :serverId AND artistLine IS NOT NULL ORDER BY artistLine, year, title, rowid LIMIT :limit OFFSET :offset)
+        ORDER BY al.artistLine, al.year, al.title, al.rowid""",
+    )
+    suspend fun albumsWithArtistLine(serverId: String, limit: Int, offset: Int): List<AlbumView>
+
+    @Query("SELECT COUNT(*) FROM album WHERE serverId = :serverId AND artistLine IS NOT NULL")
+    suspend fun albumsWithArtistLineCount(serverId: String): Int
+
+    @Query(
+        """SELECT al.*, $ALBUM_MARKS FROM album al WHERE al.serverId = :serverId AND al.artistLine IS NULL
+        ORDER BY al.year, al.title, al.rowid LIMIT :limit OFFSET :offset""",
+    )
+    suspend fun albumsWithoutArtistLine(serverId: String, limit: Int, offset: Int): List<AlbumView>
+
+    @Query(
+        """SELECT al.*, $ALBUM_MARKS FROM album al WHERE al.rowid IN
+        (SELECT rowid FROM album WHERE serverId = :serverId ORDER BY createdAtMs DESC, rowid DESC LIMIT :limit OFFSET :offset)
+        ORDER BY al.createdAtMs DESC, al.rowid DESC""",
+    )
     suspend fun albumsNewest(serverId: String, limit: Int, offset: Int): List<AlbumView>
 
     /**
@@ -247,7 +282,11 @@ interface CatalogueDao {
     )
     suspend fun tracksOfAlbum(serverId: String, albumId: String): List<TrackView>
 
-    @Query("SELECT t.*, $TRACK_MARKS FROM track t WHERE t.serverId = :serverId ORDER BY t.title, t.id LIMIT :limit OFFSET :offset")
+    @Query(
+        """SELECT t.*, $TRACK_MARKS FROM track t WHERE t.rowid IN
+        (SELECT rowid FROM track WHERE serverId = :serverId ORDER BY title, rowid LIMIT :limit OFFSET :offset)
+        ORDER BY t.title, t.rowid""",
+    )
     suspend fun tracksByTitle(serverId: String, limit: Int, offset: Int): List<TrackView>
 
     @Query("SELECT t.*, $TRACK_MARKS FROM track t WHERE t.serverId = :serverId AND t.id = :id")
@@ -280,10 +319,17 @@ interface CatalogueDao {
 
     // Search: [pattern] is "%text%" with % and _ escaped by '\'.
 
+    /**
+     * A LIKE with a leading % reads every song; the inner query reads only the (serverId,
+     * title, artistLine, albumTitle) index, a fraction of the table's size, and the rows found
+     * are read after.
+     */
     @Query(
-        """SELECT t.*, $TRACK_MARKS FROM track t WHERE t.serverId = :serverId
-        AND (t.title LIKE :pattern ESCAPE '\' OR t.artistLine LIKE :pattern ESCAPE '\' OR t.albumTitle LIKE :pattern ESCAPE '\')
-        ORDER BY t.title LIMIT :limit""",
+        """SELECT t.*, $TRACK_MARKS FROM track t WHERE t.rowid IN
+        (SELECT rowid FROM track WHERE serverId = :serverId
+        AND (title LIKE :pattern ESCAPE '\' OR artistLine LIKE :pattern ESCAPE '\' OR albumTitle LIKE :pattern ESCAPE '\')
+        ORDER BY title LIMIT :limit)
+        ORDER BY t.title""",
     )
     suspend fun searchTracks(serverId: String, pattern: String, limit: Int): List<TrackView>
 

@@ -35,6 +35,8 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
     }
+    // The misuse tests play the music engine's test tones.
+    sourceSets["test"].resources.directories += "../player/music/src/test/resources"
 }
 
 dependencies {
@@ -85,4 +87,6 @@ dependencies {
     testImplementation(libs.roborazzi.compose)
     testImplementation(libs.roborazzi.junit.rule)
     testImplementation(libs.androidx.work.testing)
+    testImplementation(libs.androidx.media3.test.utils)
+    testImplementation(libs.androidx.media3.test.utils.robolectric)
 }

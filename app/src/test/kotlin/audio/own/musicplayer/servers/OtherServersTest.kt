@@ -31,6 +31,9 @@ import audio.own.musicplayer.R as AppR
 class FakeJellyfin : AutoCloseable {
     val server = MockWebServer()
     val requests: MutableList<RecordedRequest> = Collections.synchronizedList(mutableListOf())
+
+    /** A copy to search: the server adds to [requests] from its own thread meanwhile. */
+    fun seen(): List<RecordedRequest> = synchronized(requests) { requests.toList() }
     var password = "pw"
     var quickConnect = true
     var approveAfter = 2
@@ -132,7 +135,7 @@ class OtherServersTest {
         assertEquals("jf-1", saved.serverIdentity)
         assertEquals(ServerAuth.Jellyfin("alex", "u-1", "tok-1"), saved.auth)
         assertEquals(listOf("http://192.168.1.20:8096"), saved.addresses.filter { it.origin == AddressOrigin.SERVER }.map { it.url })
-        val auth = jellyfin.requests.first { it.url.encodedPath == "/Users/AuthenticateByName" }.headers["Authorization"].orEmpty()
+        val auth = jellyfin.seen().first { it.url.encodedPath == "/Users/AuthenticateByName" }.headers["Authorization"].orEmpty()
         assertTrue(auth.startsWith("MediaBrowser Client=\"own.audio Music\""))
         assertTrue("DeviceId=\"own-music-test\"" in auth)
         assertEquals(saved.id, model.state.value.activeId)
@@ -149,7 +152,7 @@ class OtherServersTest {
     fun removingAJellyfinServerEndsItsSession() = runBlocking {
         model.signIn(jellyfin.url, "alex", "pw", "")
         model.remove(model.state.value.activeId!!)
-        eventually { jellyfin.requests.any { it.url.encodedPath == "/Sessions/Logout" } }
+        eventually { jellyfin.seen().any { it.url.encodedPath == "/Sessions/Logout" } }
         assertTrue(harness.store.loadAll().isEmpty())
     }
 

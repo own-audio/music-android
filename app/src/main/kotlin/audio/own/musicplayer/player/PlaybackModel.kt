@@ -10,6 +10,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
+import audio.own.core.servers.CompositeId
 import audio.own.music.library.model.Song
 import audio.own.player.core.SleepTimer
 import audio.own.player.music.MusicPlayer
@@ -112,6 +113,15 @@ class PlaybackModel(
         }
     }
 
+    /**
+     * [serverId] was removed: if the song playing is one of its, playback stops, as music-ios's
+     * `removeServer` does. Its address and sign-in are gone, so nothing after it could load.
+     */
+    fun serverRemoved(serverId: String) {
+        val current = engine.state.value.currentTrack ?: return
+        if (CompositeId.split(current.id)?.first == serverId) engine.stop()
+    }
+
     fun next() = engine.next()
     fun previous() = engine.previous()
     fun seekTo(positionMs: Long) = engine.seekTo(positionMs)
@@ -139,34 +149,20 @@ class PlaybackModel(
     }
 }
 
-/** [PlayerEngine] over the app's [PlaybackStack] and a controller connected to the service. */
+/**
+ * [PlayerEngine] over the music engine itself. [player] is what transport commands go to: the
+ * engine's own player here, the service's controller in [StackEngine].
+ */
 @UnstableApi
-class StackEngine(private val stack: PlaybackStack) : PlayerEngine {
-    private val music get() = stack.music
-    private var controllerFuture: ListenableFuture<MediaController>? = null
-    private var controller: MediaController? = null
-
+open class MusicEngine(
+    private val music: MusicPlayer,
+    override val error: StateFlow<PlaybackException?>,
+    private val onClearError: () -> Unit,
+) : PlayerEngine {
     override val state: StateFlow<MusicPlayer.State> get() = music.state
     override val sleep: StateFlow<SleepTimer.State> get() = music.sleepTimer.state
-    override val error: StateFlow<PlaybackException?> get() = stack.error
 
-    /** Binds the service while a screen shows, so the session is there before the first Play. */
-    fun connect(context: Context) {
-        if (controllerFuture != null) return
-        val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
-        val future = MediaController.Builder(context, token).buildAsync()
-        controllerFuture = future
-        future.addListener({ controller = runCatching { future.get() }.getOrNull() }, MoreExecutors.directExecutor())
-    }
-
-    fun disconnect() {
-        controllerFuture?.let(MediaController::releaseFuture)
-        controllerFuture = null
-        controller = null
-    }
-
-    /** The controller once connected; the engine's own player until then (same process, same thread). */
-    private val player: Player get() = controller ?: music.player
+    protected open val player: Player get() = music.player
 
     override fun progress(): Progress {
         val p = music.player
@@ -200,5 +196,31 @@ class StackEngine(private val stack: PlaybackStack) : PlayerEngine {
     override fun sleepAtEndOfTrack() = music.sleepTimer.startUntilEndOfItem()
     override fun extendSleep(bySecs: Double) = music.sleepTimer.extend(bySecs)
     override fun cancelSleep() = music.sleepTimer.cancel()
-    override fun clearError() = stack.clearError()
+    override fun clearError() = onClearError()
+}
+
+/** [PlayerEngine] over the app's [PlaybackStack] and a controller connected to the service. */
+@UnstableApi
+class StackEngine(stack: PlaybackStack) : MusicEngine(stack.music, stack.error, stack::clearError) {
+    private var controllerFuture: ListenableFuture<MediaController>? = null
+    private var controller: MediaController? = null
+    private val music = stack.music
+
+    /** Binds the service while a screen shows, so the session is there before the first Play. */
+    fun connect(context: Context) {
+        if (controllerFuture != null) return
+        val token = SessionToken(context, ComponentName(context, PlaybackService::class.java))
+        val future = MediaController.Builder(context, token).buildAsync()
+        controllerFuture = future
+        future.addListener({ controller = runCatching { future.get() }.getOrNull() }, MoreExecutors.directExecutor())
+    }
+
+    fun disconnect() {
+        controllerFuture?.let(MediaController::releaseFuture)
+        controllerFuture = null
+        controller = null
+    }
+
+    /** The controller once connected; the engine's own player until then (same process, same thread). */
+    override val player: Player get() = controller ?: music.player
 }

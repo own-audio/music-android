@@ -1,6 +1,8 @@
 package audio.own.musicplayer.library
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -130,7 +132,11 @@ fun AlbumContent(state: Load<AlbumWithSongs>, known: Album?, onBack: () -> Unit,
                         album?.artist?.let { artist ->
                             val id = album.artistId
                             if (id != null) {
-                                Text(artist, style = MaterialTheme.typography.titleMedium, color = palette.accent, textAlign = TextAlign.Center, modifier = Modifier.clickable { onArtist(Artist(id, artist)) })
+                                // A link: a full-size target, and said to be a button, not only drawn in the accent.
+                                Text(
+                                    artist, style = MaterialTheme.typography.titleMedium, color = palette.accent, textAlign = TextAlign.Center,
+                                    modifier = Modifier.heightIn(min = Tokens.minTarget).clickable(role = androidx.compose.ui.semantics.Role.Button) { onArtist(Artist(id, artist)) }.wrapContentHeight(),
+                                )
                             } else {
                                 Text(artist, style = MaterialTheme.typography.titleMedium, color = palette.muted, textAlign = TextAlign.Center)
                             }
@@ -235,7 +241,7 @@ fun ArtistContent(
     var pictured by remember { mutableStateOf(false) }
     val artist = if (pictured) known.copy(coverArt = known.coverArt ?: known.id) else known
     var menu by remember { mutableStateOf(false) }
-    ListPage(artist.name, onBack, actions = {
+    ListPage(artist.name, onBack, maxContentWidth = null, actions = {
         FavoriteStar(FavoriteKind.ARTIST, artist.id, artist.isFavorite)
         if (ui.canChoosePictures || ui.canIdentify) {
             Box {

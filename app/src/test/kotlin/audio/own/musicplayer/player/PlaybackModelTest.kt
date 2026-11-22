@@ -191,3 +191,34 @@ class DeviceCodecsTest {
         assertEquals(listOf("mp3", "aac"), AppLinkResolver.TRANSCODE)
     }
 }
+
+/** The full player's keyboard: Space, Ctrl+← and Ctrl+→, Esc. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class PlayerKeysTest {
+    private val calls = mutableListOf<String>()
+
+    private fun press(code: Int, ctrl: Boolean = false, hasTrack: Boolean = true, hasNext: Boolean = true): Boolean {
+        val meta = if (ctrl) android.view.KeyEvent.META_CTRL_ON or android.view.KeyEvent.META_CTRL_LEFT_ON else 0
+        val event = androidx.compose.ui.input.key.KeyEvent(android.view.KeyEvent(0, 0, android.view.KeyEvent.ACTION_DOWN, code, 0, meta))
+        return playerKey(event, hasTrack, hasNext, { calls += "toggle" }, { calls += "next" }, { calls += "previous" }, { calls += "close" })
+    }
+
+    @Test
+    fun spaceTogglesCtrlArrowsSkipEscCloses() {
+        assertTrue(press(android.view.KeyEvent.KEYCODE_SPACE))
+        assertTrue(press(android.view.KeyEvent.KEYCODE_DPAD_RIGHT, ctrl = true))
+        assertTrue(press(android.view.KeyEvent.KEYCODE_DPAD_LEFT, ctrl = true))
+        assertTrue(press(android.view.KeyEvent.KEYCODE_ESCAPE))
+        assertEquals(listOf("toggle", "next", "previous", "close"), calls)
+    }
+
+    @Test
+    fun plainArrowsMoveFocusAndNothingPlaysWithoutASong() {
+        assertFalse("a plain arrow is left to focus", press(android.view.KeyEvent.KEYCODE_DPAD_RIGHT))
+        assertFalse(press(android.view.KeyEvent.KEYCODE_SPACE, hasTrack = false))
+        assertTrue("Esc closes even an empty player", press(android.view.KeyEvent.KEYCODE_ESCAPE, hasTrack = false))
+        assertTrue("on the last song Ctrl+→ is taken, and does nothing", press(android.view.KeyEvent.KEYCODE_DPAD_RIGHT, ctrl = true, hasNext = false))
+        assertEquals(listOf("close"), calls)
+    }
+}

@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
+import audio.own.musicplayer.ui.asHeading
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -94,12 +97,14 @@ fun ListPage(
     title: String,
     onBack: (() -> Unit)?,
     actions: @Composable () -> Unit = {},
+    /** Lists stay a readable width on a tablet; a grid or a page of shelves passes null. */
+    maxContentWidth: androidx.compose.ui.unit.Dp? = audio.own.musicplayer.ui.LIST_MAX_WIDTH,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.asHeading()) },
                 navigationIcon = {
                     if (onBack != null) IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(SR.string.back)) }
                 },
@@ -108,7 +113,15 @@ fun ListPage(
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
-    ) { inner -> content(inner) }
+    ) { inner ->
+        if (maxContentWidth == null) {
+            content(inner)
+        } else {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                Box(Modifier.widthIn(max = maxContentWidth).fillMaxSize()) { content(inner) }
+            }
+        }
+    }
 }
 
 /** Pull to refresh around a list. */
@@ -197,7 +210,7 @@ fun LibrarySidebar(concerts: Boolean, selected: String?, onOpen: (String) -> Uni
         Text(
             stringResource(R.string.library),
             style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(horizontal = Tokens.Spacing.lg, vertical = Tokens.Spacing.md),
+            modifier = Modifier.padding(horizontal = Tokens.Spacing.lg, vertical = Tokens.Spacing.md).asHeading(),
         )
         val rows = LibrarySection.available(concerts).map { Triple(it.route, it.icon, it.title) } +
             Triple(LibraryRoutes.DOWNLOADS, Icons.Filled.DownloadForOffline, R.string.downloads) +
@@ -210,13 +223,14 @@ fun LibrarySidebar(concerts: Boolean, selected: String?, onOpen: (String) -> Uni
                     .heightIn(min = Tokens.minTarget)
                     .padding(horizontal = Tokens.Spacing.sm)
                     .background(if (isSelected) palette.accent.copy(alpha = 0.15f) else palette.backgroundAlt, RoundedCornerShape(10.dp))
-                    .clickable { onOpen(route) }
+                    // Selected is said, and drawn in weight as well as in the tint.
+                    .selectable(selected = isSelected) { onOpen(route) }
                     .padding(horizontal = Tokens.Spacing.md),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Tokens.Spacing.md),
             ) {
                 Icon(icon, contentDescription = null, tint = palette.accent)
-                Text(stringResource(title), color = palette.foreground)
+                Text(stringResource(title), color = palette.foreground, fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal)
             }
         }
     }
@@ -305,6 +319,7 @@ fun AlbumsScreen(vm: AlbumsViewModel, onBack: () -> Unit, onAlbum: (Album) -> Un
     ListPage(
         title = stringResource(if (favorites) R.string.favorites else R.string.albums),
         onBack = onBack,
+        maxContentWidth = null,
         actions = {
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.sort)) }
@@ -409,7 +424,7 @@ fun GenreScreen(name: String, vm: GenreViewModel, onBack: () -> Unit, onAlbum: (
     val state by vm.state.collectAsStateWithLifecycle()
     val shuffling by vm.shuffling.collectAsStateWithLifecycle()
     val ui = LocalLibraryUi.current
-    ListPage(name, onBack) { inner ->
+    ListPage(name, onBack, maxContentWidth = null) { inner ->
         Box(Modifier.padding(inner)) {
             LoadStateView(state.forView(), onRetry = vm::load) { albums ->
                 AlbumGrid(albums, onAlbum, header = {
@@ -490,7 +505,7 @@ private fun LazyListScope.emptyItem(title: Int, text: Int) = item {
 @Composable
 fun ConcertsScreen(vm: ConcertsViewModel, onBack: () -> Unit, onAlbum: (Album) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
-    ListPage(stringResource(R.string.concerts), onBack) { inner ->
+    ListPage(stringResource(R.string.concerts), onBack, maxContentWidth = null) { inner ->
         Box(Modifier.padding(inner)) {
             LoadStateView(state.forView(), onRetry = vm::load) { concerts ->
                 if (concerts.isEmpty()) {

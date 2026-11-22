@@ -39,13 +39,15 @@ class OwnAudioApp : Application(), SingletonImageLoader.Factory, Configuration.P
                 if (was && !container.offline.isOffline) container.sync.flushSoon()
             }
         }
-        // A removed server's downloads leave the device, and what it was still owed is dropped.
+        // A removed server's song stops, its downloads leave the device, and what it was still
+        // owed is dropped.
         container.scope.launch {
             var known: Set<String>? = null
             container.servers.state.collect { state ->
                 if (!state.loaded) return@collect
                 val ids = state.servers.map { it.id }.toSet()
                 known?.minus(ids)?.forEach { gone ->
+                    container.stopMusicOf(gone)
                     container.downloads.removeAll(gone)
                     container.sync.outbox.forget(gone)
                 }

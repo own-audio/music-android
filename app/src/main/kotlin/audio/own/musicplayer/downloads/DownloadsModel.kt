@@ -8,6 +8,7 @@ import audio.own.core.downloads.DownloadEntity
 import audio.own.core.downloads.DownloadFetcher
 import audio.own.core.downloads.DownloadNotifications
 import audio.own.core.downloads.DownloadRequest
+import audio.own.core.downloads.DownloadScheduler
 import audio.own.core.downloads.DownloadWorkerFactory
 import audio.own.core.downloads.Downloads
 import audio.own.core.downloads.DownloadsDatabase
@@ -64,13 +65,17 @@ class DownloadsModel(
     private val playing: () -> String?,
     private val log: AppLog,
     private val scope: CoroutineScope,
+    /** Where the index and the files are, and who runs the work: tests give their own. */
+    db: DownloadsDatabase = DownloadsDatabase.open(context.applicationContext),
+    root: File = File(context.applicationContext.filesDir, "downloads"),
+    scheduler: DownloadScheduler = WorkManagerScheduler { WorkManager.getInstance(context.applicationContext) },
 ) {
     private val app = context.applicationContext
 
     val downloads = Downloads(
-        db = DownloadsDatabase.open(app),
-        root = File(app.filesDir, "downloads"),
-        scheduler = WorkManagerScheduler { WorkManager.getInstance(app) },
+        db = db,
+        root = root,
+        scheduler = scheduler,
         resolver = { item -> link(item) },
         fetcher = DownloadFetcher(bareHttp, proxyMemory, userAgent),
         settings = object : Downloads.Settings {

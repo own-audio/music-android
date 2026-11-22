@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import audio.own.core.designsystem.theme.LocalPalette
@@ -61,7 +63,7 @@ fun Page(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.asHeading()) },
                 navigationIcon = {
                     if (onBack != null) {
                         if (closeIsCancel) {
@@ -180,3 +182,9 @@ fun Section(header: String?, modifier: Modifier = Modifier, footer: String? = nu
         }
     }
 }
+
+/** TalkBack's headings: a page's title and its sections', to jump between with the heading gesture. */
+fun Modifier.asHeading(): Modifier = semantics { heading() }
+
+/** How wide a list grows on a tablet or an unfolded foldable; grids and shelves use the whole width. */
+val LIST_MAX_WIDTH = 840.dp

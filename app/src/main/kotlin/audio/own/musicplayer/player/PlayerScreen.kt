@@ -10,6 +10,19 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import audio.own.musicplayer.ui.asHeading
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
@@ -60,7 +73,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -147,7 +160,19 @@ fun PlayerContent(
     val track = ui.state.currentTrack
     val palette = LocalPalette.current
     val haptics = LocalHapticFeedback.current
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            // A keyboard on a tablet or a Chromebook: Space plays and pauses, Ctrl+← and Ctrl+→
+            // go to the previous and next song, Esc closes the player. A sheet over it takes
+            // the keys itself.
+            .focusRequester(focus)
+            .focusable()
+            .onKeyEvent { event -> event.type == KeyEventType.KeyDown && playerKey(event, track != null, ui.state.hasNext, onToggle, onNext, onPrevious, onClose) },
+    ) {
         Crossfade(track?.artworkId, animationSpec = tween(AppBrand.COVER_CROSSFADE_MS), label = "background") { artwork ->
             if (artwork != null) {
                 val blurred = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
@@ -171,9 +196,11 @@ fun PlayerContent(
                     Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.stop_playback), tint = Color.White)
                 }
             }
-            BoxWithConstraints(Modifier.fillMaxSize().widthIn(max = 600.dp), contentAlignment = Alignment.TopCenter) {
+            // The width cap first: fillMaxSize before it would stretch the column over a tablet.
+            BoxWithConstraints(Modifier.widthIn(max = 600.dp).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
                 val column = min(maxWidth, 600.dp)
-                val coverSide = minOf(maxOf(column - 120.dp, 280.dp), 400.dp, column - Tokens.Spacing.screenEdge * 2)
+                // A tablet in landscape is short: the cover gives way so the controls stay on screen.
+                val coverSide = minOf(maxOf(column - 120.dp, 280.dp), 400.dp, column - Tokens.Spacing.screenEdge * 2, maxOf(maxHeight - 380.dp, 160.dp))
                 Column(
                     Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -248,7 +275,7 @@ private fun Titles(ui: PlayerUi, onFavorite: () -> Unit, onChapters: () -> Unit)
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                 maxLines = 1,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = Tokens.minTarget)
+                modifier = Modifier.padding(horizontal = Tokens.minTarget).asHeading()
                     .then(if (still) Modifier else Modifier.basicMarquee(iterations = 1, initialDelayMillis = 2_000)),
             )
             if (track != null) {
@@ -296,8 +323,12 @@ private fun Titles(ui: PlayerUi, onFavorite: () -> Unit, onChapters: () -> Unit)
 
 /**
  * The position and times, redrawn on their own about four times a second; a drag holds its
- * target until the seek lands, so the thumb doesn't jump back meanwhile.
+ * target until the seek lands, so the thumb doesn't jump back meanwhile. Drawn as music-ios's
+ * `PlaybackScrubber`: a thin white line, the buffered part lighter, a small round thumb, in
+ * place of Material's thick track with its gap and end dot. TalkBack hears "1:23 of 4:56" and
+ * moves it in steps with the volume keys.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Scrubber(progress: () -> Progress, onSeek: (Long) -> Unit, tickMs: Long, modifier: Modifier = Modifier) {
     var now by remember { mutableStateOf(progress()) }
@@ -312,32 +343,72 @@ private fun Scrubber(progress: () -> Progress, onSeek: (Long) -> Unit, tickMs: L
     val fraction = target ?: (now.positionMs.toFloat() / duration).coerceIn(0f, 1f)
     val shownMs = (fraction * duration).toLong()
     val position = stringResource(R.string.playback_position)
-    val accent = LocalPalette.current.accent
+    val value = stringResource(R.string.time_of_duration, formatDuration(now.positionMs.coerceAtLeast(0) / 1000), formatDuration(duration / 1000))
+    val buffered = (now.bufferedMs.toFloat() / duration).coerceIn(0f, 1f)
+    val interaction = remember { MutableInteractionSource() }
+    // The state overload is the one that takes a thumb and a track of our own.
+    val slider = remember { SliderState() }
+    LaunchedEffect(fraction) { if (target == null) slider.value = fraction }
     Column(modifier.fillMaxWidth()) {
-        Box(Modifier.fillMaxWidth().height(Tokens.minTarget), contentAlignment = Alignment.Center) {
-            val buffered = (now.bufferedMs.toFloat() / duration).coerceIn(0f, 1f)
-            Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(Color.White.copy(alpha = 0.2f))) {
-                Box(Modifier.fillMaxWidth(buffered).height(4.dp).background(Color.White.copy(alpha = 0.35f)))
-            }
-            Slider(
-                value = fraction,
-                onValueChange = { target = it },
-                onValueChangeFinished = {
-                    target?.let { onSeek((it * duration).toLong()) }
-                    target = null
-                },
-                colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = accent, inactiveTrackColor = Color.Transparent),
-                modifier = Modifier.fillMaxWidth().semantics {
-                    contentDescription = position
-                    stateDescription = "${formatDuration(shownMs / 1000)} / ${formatDuration(duration / 1000)}"
-                },
-            )
-        }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+        Slider(
+            state = slider,
+            onValueChange = {
+                slider.value = it
+                target = it
+            },
+            onValueChangeFinished = {
+                target?.let { onSeek((it * duration).toLong()) }
+                target = null
+            },
+            interactionSource = interaction,
+            thumb = { ScrubberThumb() },
+            track = { state -> ScrubberTrack(state.value, buffered) },
+            modifier = Modifier.fillMaxWidth().height(Tokens.minTarget).semantics {
+                contentDescription = position
+                stateDescription = value
+            },
+        )
+        // The times line up with the ends of the line, which starts half a thumb in.
+        Row(Modifier.fillMaxWidth().padding(horizontal = SCRUBBER_THUMB / 2), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(formatDuration(shownMs / 1000), color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.labelMedium.tabular())
             Text("-" + formatDuration((duration - shownMs).coerceAtLeast(0) / 1000), color = Color.White.copy(alpha = 0.6f), style = MaterialTheme.typography.labelMedium.tabular())
         }
     }
+}
+
+/** The scrubber's thumb: a 14 dp white dot. */
+@Composable
+private fun ScrubberThumb() {
+    Box(Modifier.size(SCRUBBER_THUMB).background(Color.White, CircleShape))
+}
+
+/** The scrubber's line, 4 dp: what is left, what has arrived (lighter), what has played (white). */
+@Composable
+private fun ScrubberTrack(played: Float, buffered: Float) {
+    Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.25f))) {
+        if (buffered > played) Box(Modifier.fillMaxWidth(buffered).height(4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.45f)))
+        Box(Modifier.fillMaxWidth(played.coerceIn(0f, 1f)).height(4.dp).clip(CircleShape).background(Color.White))
+    }
+}
+
+private val SCRUBBER_THUMB = 14.dp
+
+/** The player's keys; true when [event] was one of them. */
+internal fun playerKey(
+    event: KeyEvent,
+    hasTrack: Boolean,
+    hasNext: Boolean,
+    onToggle: () -> Unit,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    onClose: () -> Unit,
+): Boolean = when {
+    event.key == Key.Escape -> { onClose(); true }
+    !hasTrack -> false
+    event.key == Key.Spacebar && !event.isCtrlPressed -> { onToggle(); true }
+    event.key == Key.DirectionRight && event.isCtrlPressed -> { if (hasNext) onNext(); true }
+    event.key == Key.DirectionLeft && event.isCtrlPressed -> { onPrevious(); true }
+    else -> false
 }
 
 @Composable
@@ -354,18 +425,22 @@ private fun Transport(ui: PlayerUi, progress: () -> Progress, onToggle: () -> Un
         IconButton(onClick = { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); onPrevious() }, enabled = ui.state.currentTrack != null) {
             Icon(Icons.Filled.SkipPrevious, contentDescription = stringResource(R.string.previous), tint = Color.White, modifier = Modifier.size(36.dp))
         }
-        Box(Modifier.size(72.dp), contentAlignment = Alignment.Center) {
+        // The label is on the button, so TalkBack still reads Pause while a load's ring stands
+        // in for the icon, and the button stays where a finger expects it.
+        val playLabel = stringResource(if (ui.state.isPlaying) SR.string.pause else SR.string.play)
+        IconButton(
+            onClick = { haptics.performHapticFeedback(HapticFeedbackType.LongPress); onToggle() },
+            modifier = Modifier.size(72.dp).semantics { contentDescription = playLabel },
+        ) {
             if (loading) {
                 CircularProgressIndicator(color = Color.White)
             } else {
-                IconButton(onClick = { haptics.performHapticFeedback(HapticFeedbackType.LongPress); onToggle() }, modifier = Modifier.size(72.dp)) {
-                    Icon(
-                        if (ui.state.isPlaying) Icons.Filled.PauseCircle else Icons.Filled.PlayCircle,
-                        contentDescription = stringResource(if (ui.state.isPlaying) SR.string.pause else SR.string.play),
-                        tint = Color.White,
-                        modifier = Modifier.size(64.dp),
-                    )
-                }
+                Icon(
+                    if (ui.state.isPlaying) Icons.Filled.PauseCircle else Icons.Filled.PlayCircle,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(64.dp),
+                )
             }
         }
         IconButton(onClick = { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); onNext() }, enabled = ui.state.hasNext) {
@@ -385,7 +460,9 @@ private fun Tools(ui: PlayerUi, onShuffle: () -> Unit, onRepeat: () -> Unit, onS
         horizontalArrangement = Arrangement.spacedBy(Tokens.Spacing.md, Alignment.CenterHorizontally),
     ) {
         Tool(Icons.Filled.FormatQuote, stringResource(R.string.lyrics), enabled = hasTrack) { onSheet(PlayerSheet.LYRICS) }
-        Tool(Icons.Filled.Shuffle, stringResource(R.string.shuffle), active = ui.state.isShuffled, onClick = onShuffle)
+        val on = stringResource(R.string.state_on)
+        val off = stringResource(R.string.state_off)
+        Tool(Icons.Filled.Shuffle, stringResource(R.string.shuffle), active = ui.state.isShuffled, state = if (ui.state.isShuffled) on else off, onClick = onShuffle)
         val repeatState = stringResource(
             when (repeat) {
                 RepeatMode.OFF -> R.string.repeat_off
@@ -394,9 +471,9 @@ private fun Tools(ui: PlayerUi, onShuffle: () -> Unit, onRepeat: () -> Unit, onS
             },
         )
         Tool(if (repeat == RepeatMode.ONE) Icons.Filled.RepeatOne else Icons.Filled.Repeat, stringResource(R.string.repeat), active = repeat != RepeatMode.OFF, state = repeatState, onClick = onRepeat)
-        Tool(Icons.Filled.Waves, stringResource(R.string.crossfade), active = ui.crossfadeOn) { onSheet(PlayerSheet.CROSSFADE) }
-        Tool(Icons.Filled.Equalizer, stringResource(R.string.eq), active = ui.equalizerOn) { onSheet(PlayerSheet.EQUALIZER) }
-        Tool(Icons.Filled.Bedtime, stringResource(R.string.sleep), active = ui.sleep.isActive) { onSheet(PlayerSheet.SLEEP) }
+        Tool(Icons.Filled.Waves, stringResource(R.string.crossfade), active = ui.crossfadeOn, state = if (ui.crossfadeOn) on else off) { onSheet(PlayerSheet.CROSSFADE) }
+        Tool(Icons.Filled.Equalizer, stringResource(R.string.eq), active = ui.equalizerOn, state = if (ui.equalizerOn) on else off) { onSheet(PlayerSheet.EQUALIZER) }
+        Tool(Icons.Filled.Bedtime, stringResource(R.string.sleep), active = ui.sleep.isActive, state = if (ui.sleep.isActive) on else off) { onSheet(PlayerSheet.SLEEP) }
         Tool(Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.queue), enabled = hasTrack) { onSheet(PlayerSheet.QUEUE) }
         if (ui.canIdentify) {
             // The same two actions as a song's menu, for the song playing.
@@ -435,7 +512,13 @@ private fun Tool(icon: ImageVector, label: String, active: Boolean = false, enab
         modifier = Modifier.heightIn(min = Tokens.minTarget).then(if (state != null) Modifier.semantics { stateDescription = state } else Modifier),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, contentDescription = null, tint = tint)
+            // A tool that is on gets a plate behind its icon as well as the accent: not told by colour alone.
+            Box(
+                Modifier.background(if (active && enabled) Color.White.copy(alpha = 0.18f) else Color.Transparent, CircleShape).padding(horizontal = 10.dp, vertical = 2.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, contentDescription = null, tint = tint)
+            }
             Text(label, color = tint, style = MaterialTheme.typography.labelSmall, maxLines = 1)
         }
     }

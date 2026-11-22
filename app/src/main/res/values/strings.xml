@@ -126,6 +126,9 @@
     <string name="song_n_of_m">Song %1$d of %2$d</string>
     <string name="track_n_of_m">Track %1$d of %2$d</string>
     <string name="playback_position">Playback position</string>
+    <string name="time_of_duration">%1$s of %2$s</string>
+    <string name="state_on">On</string>
+    <string name="state_off">Off</string>
     <string name="play_from_where_you_left_off">%1$s, play from where you left off</string>
     <string name="could_not_play">Could not play this track.</string>
     <string name="streaming">Streaming</string>

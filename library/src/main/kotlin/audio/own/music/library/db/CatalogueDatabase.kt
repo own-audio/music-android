@@ -12,12 +12,13 @@ import androidx.room.withTransaction
  * version can be checked and a migration written against the one before.
  *
  * Version 2 added the file format, bit rate and gain columns Subsonic and Jellyfin catalogues
- * fill; adding nullable columns is a migration Room writes itself.
+ * fill; adding nullable columns is a migration Room writes itself. Version 3 widened the
+ * songs' title index with the searched columns (offline search of a 600k-song library).
  */
 @Database(
-    version = 2,
+    version = 3,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
     entities = [
         ArtistRow::class, AlbumRow::class, TrackRow::class, GenreRow::class, TrackGenreRow::class,
         AlbumCreditRow::class, TrackCreditRow::class, PlaylistRow::class, PlaylistEntryRow::class,

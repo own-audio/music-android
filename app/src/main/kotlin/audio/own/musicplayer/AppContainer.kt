@@ -47,6 +47,8 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import audio.own.core.servers.CompositeId
 import kotlinx.coroutines.SupervisorJob
 import okhttp3.OkHttpClient
 import androidx.glance.appwidget.updateAll
@@ -313,6 +315,22 @@ class AppContainer(context: Context) {
             if (!playbackLazy.isInitialized()) widgetTrack.compareAndSet(null, last?.tracks?.firstOrNull { it.id == last.currentTrackId })
         }
         widgets.start(scope)
+    }
+
+    /**
+     * A server was removed: its song stops if it is playing. With no player built yet, a last
+     * queue that would come back with its songs is forgotten instead.
+     */
+    suspend fun stopMusicOf(serverId: String) {
+        if (playbackLazy.isInitialized()) {
+            withContext(Dispatchers.Main) { playbackModel.serverRemoved(serverId) }
+        } else {
+            withContext(Dispatchers.IO) {
+                val store = lastQueueStore(File(app.filesDir, "last-queue.json"))
+                val current = store.read()?.currentTrackId
+                if (current != null && CompositeId.split(current)?.first == serverId) store.delete()
+            }
+        }
     }
 
     /** The header of a shared log: which app, which system. */

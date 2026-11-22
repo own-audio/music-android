@@ -201,7 +201,9 @@ fun AlbumTile(album: Album, size: Dp, onClick: () -> Unit, modifier: Modifier = 
         verticalArrangement = Arrangement.spacedBy(Tokens.Spacing.xs),
     ) {
         CoverArt(rememberCover(album.coverId(), size), size, Icons.Filled.Album, radius = AppBrand.radii.cover)
-        Text(album.displayName(), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(size))
+        // Two lines at the largest text sizes: one holds only a word or two there.
+        val lines = if (androidx.compose.ui.platform.LocalDensity.current.fontScale >= STACKED_FONT_SCALE) 2 else 1
+        Text(album.displayName(), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), maxLines = lines, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(size))
         Text(album.artist.orEmpty(), style = MaterialTheme.typography.bodySmall, color = palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(size))
     }
 }
@@ -250,7 +252,7 @@ fun ArtistImage(artist: Artist, size: Dp) {
 @Composable
 fun PlayShuffleButtons(enabled: Boolean, onPlay: () -> Unit, onShuffle: () -> Unit, modifier: Modifier = Modifier) {
     val haptics = LocalHapticFeedback.current
-    val stacked = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.8f
+    val stacked = androidx.compose.ui.platform.LocalDensity.current.fontScale >= STACKED_FONT_SCALE
     val play = @Composable { m: Modifier ->
         FilledTonalButton(onClick = { haptics.performHapticFeedback(HapticFeedbackType.LongPress); onPlay() }, enabled = enabled, modifier = m.heightIn(min = Tokens.minTarget)) {
             Icon(Icons.Filled.PlayArrow, contentDescription = null)
@@ -320,22 +322,36 @@ fun SongRow(
                 }
             }
         }
+        // At the largest text sizes the marks and the duration go under the words, so the title
+        // keeps the width it needs.
+        val stacked = androidx.compose.ui.platform.LocalDensity.current.fontScale >= STACKED_FONT_SCALE
+        val marks: @Composable () -> Unit = {
+            // With a cover in front there is no number to swap for the speaker: it comes here,
+            // so the song playing isn't told by the title's colour alone.
+            if (isCurrent && showsCover) {
+                Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = stringResource(SR.string.now_playing), tint = palette.accent, modifier = Modifier.size(14.dp))
+            }
+            if (ui.sharingOf(song) == Sharing.SHARED) {
+                Icon(Icons.Filled.Group, contentDescription = stringResource(SR.string.shared_with_family), tint = palette.muted, modifier = Modifier.size(14.dp))
+            }
+            if (starred) {
+                Icon(Icons.Filled.Star, contentDescription = stringResource(R.string.favorite_badge), tint = Color(0xFFFFCC00), modifier = Modifier.size(14.dp))
+            }
+            if (downloaded) {
+                Icon(Icons.Filled.DownloadDone, contentDescription = stringResource(SR.string.downloaded), tint = palette.muted, modifier = Modifier.size(14.dp))
+            }
+            song.durationMs?.let {
+                Text(formatDuration(it / 1000), style = MaterialTheme.typography.bodySmall.tabular(), color = palette.muted)
+            }
+        }
         Column(Modifier.weight(1f)) {
-            Text(song.title, color = if (isCurrent) palette.accent else palette.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            song.artist?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            Text(song.title, color = if (isCurrent) palette.accent else palette.foreground, maxLines = if (stacked) 3 else 1, overflow = TextOverflow.Ellipsis)
+            song.artist?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = palette.muted, maxLines = if (stacked) 2 else 1, overflow = TextOverflow.Ellipsis) }
+            if (stacked) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Tokens.Spacing.sm)) { marks() }
+            }
         }
-        if (ui.sharingOf(song) == Sharing.SHARED) {
-            Icon(Icons.Filled.Group, contentDescription = stringResource(SR.string.shared_with_family), tint = palette.muted, modifier = Modifier.size(14.dp))
-        }
-        if (starred) {
-            Icon(Icons.Filled.Star, contentDescription = stringResource(R.string.favorite_badge), tint = Color(0xFFFFCC00), modifier = Modifier.size(14.dp))
-        }
-        if (downloaded) {
-            Icon(Icons.Filled.DownloadDone, contentDescription = stringResource(SR.string.downloaded), tint = palette.muted, modifier = Modifier.size(14.dp))
-        }
-        song.durationMs?.let {
-            Text(formatDuration(it / 1000), style = MaterialTheme.typography.bodySmall.tabular(), color = palette.muted)
-        }
+        if (!stacked) marks()
         Box {
             IconButton(onClick = { menu = true }) {
                 Icon(Icons.Filled.MoreHoriz, contentDescription = stringResource(SR.string.more), tint = palette.muted)
@@ -345,6 +361,9 @@ fun SongRow(
         trailing()
     }
 }
+
+/** From this font scale on, rows put what is beside their words under them. */
+const val STACKED_FONT_SCALE = 1.8f
 
 /** What a greyed-out row is drawn at: there, but not playable now. */
 const val UNAVAILABLE_ALPHA = 0.4f

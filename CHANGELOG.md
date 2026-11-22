@@ -5,6 +5,7 @@ All notable changes to own.audio Music for Android. The format follows
 
 ## [Unreleased]
 
+- F9 and M13: a thin scrubber like the iOS app's, TalkBack headings, states and values, layouts that stack at the largest text, a library sidebar and a centred player on tablets, phones upright, keyboard keys; removing a server stops its song; misuse tests. Large libraries browse fast: the catalogue database moves to version 3 (artists, paging and song search use their indexes).
 - The user guide (`guide/`, for GitHub Pages): every screen, with screenshots.
 - F8 and M12: Android Auto (Recently Played, Recently Added, Downloads, Playlists, Artists, Favorites, search), the Recently Played widget, ownmusic:// links (resume, an album, a playlist, the player), the assistant ("play ‹album›", "play my playlist ‹name›", "continue listening") and a Continue Listening shortcut; the hourly refresh also refreshes the widget.
 - Starting a narration can carry an Idempotency-Key (with a multipart boundary made from it), so a retried start never begins a second paid job.

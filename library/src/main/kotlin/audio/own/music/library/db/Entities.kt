@@ -67,7 +67,9 @@ data class AlbumRow(
     primaryKeys = ["serverId", "id"],
     indices = [
         Index("serverId", "albumId", "discNumber", "trackNumber"),
-        Index("serverId", "title"),
+        // Sorting by title, and the search's scan: the searched columns ride along, so a
+        // search reads this index instead of every whole row.
+        Index("serverId", "title", "artistLine", "albumTitle"),
     ],
 )
 data class TrackRow(

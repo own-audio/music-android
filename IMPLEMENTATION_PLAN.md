@@ -34,10 +34,10 @@ the first of the three apps, so the foundation is written here) and the music ap
 | M10 | own.audio extras: sharing, covers, concerts | ◐ screens built 2026-11-22; to try on a writable own.audio account with own songs and a concert |
 | M11 | Identify (MusicBrainz) | ◐ screens built 2026-11-22; a run from start to accept to undo still to try on a real own.audio server |
 | F8 + M12 | Android Auto, widget, deep links, voice, background refresh | ◐ built 2026-11-22: browse tree, search, voice, links and the widget (both sizes) checked on the emulator; Auto on a head unit still to see |
-| F9 + M13 | Localization, accessibility, tablets, misuse tests, scale | ☐ |
+| F9 + M13 | Localization, accessibility, tablets, misuse tests, scale | ◐ built 2026-11-22. Scale on the emulator, 600k tracks: browsing pages 2–330 ms, artists 0.3 s (was 97 s), memory ~140 MB; still open: the first-sync insert (445 s, needs to be much faster), first-snapshot progress on the server page, full-text search for offline song search (~1 s) |
 | F10 + M14 | Release: Play, F-Droid, guide | ☐ |
 
-**Where we stopped:** F8/M12 built 2026-11-22. Next: F9/M13 polish (accessibility, tablets, misuse tests, scale on a device), the guide, the end-to-end suite, F10/M14 release. Live checks wait for a writable own.audio account.
+**Where we stopped:** F9/M13 built 2026-11-22. Next: a faster first-sync insert and its progress line, full-text song search, the release phase (F10/M14), the duplicate-server refusal from book/podcast-android, the end-to-end suite.
 
 ## Rules for whoever executes this plan
 
