@@ -24,7 +24,6 @@ import audio.own.player.music.MusicPlayer
 import audio.own.player.music.ScrobbleTracker
 import audio.own.player.music.lastQueueStore
 import java.io.File
-import java.time.Instant
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -102,6 +101,14 @@ class PlaybackStack(
     private val _error = MutableStateFlow<PlaybackException?>(null)
     val error: StateFlow<PlaybackException?> = _error.asStateFlow()
 
+    private val reporter = PlayReporter(
+        sourceOf = sourceOf,
+        enabled = { settings.current.reportPlays },
+        scope = io,
+        recordPlay = recordPlay,
+        onError = { log.error("plays", it) },
+    )
+
     /** The service's session follows the active deck: set by the service while it runs. */
     var onActivePlayerChanged: ((Player) -> Unit)? = null
 
@@ -111,7 +118,14 @@ class PlaybackStack(
                 onActivePlayerChanged?.invoke(player)
             }
 
-            override fun onScrobble(event: ScrobbleTracker.Event) = report(event)
+            override fun onScrobble(event: ScrobbleTracker.Event) {
+                when (event) {
+                    is ScrobbleTracker.Event.NowPlaying -> reporter.started(event.key, music.player.currentPosition)
+                    is ScrobbleTracker.Event.Played -> reporter.played(event.key, event.startedAtMs, (event.heardSecs * 1000).toLong())
+                }
+            }
+
+            override fun onProgress(trackId: String, positionMs: Long, isPlaying: Boolean) = reporter.progress(trackId, positionMs, isPlaying)
 
             override fun onPlaybackError(error: PlaybackException, stopped: Boolean) {
                 log.error("player", "${error.errorCodeName}: ${error.cause?.message ?: error.message}${if (stopped) " (stopped)" else ""}")
@@ -120,6 +134,12 @@ class PlaybackStack(
         }
         main.launch { music.state.collect { if (it.isPlaying) _error.value = null } }
         main.launch { music.state.map { it.currentTrack?.id }.distinctUntilChanged().collect { id -> id?.let(onTrackStarted) } }
+        // A pause reported "stopped"; playing on is a new start for the server. No track at all: the end.
+        main.launch {
+            music.state.map { it.currentTrack?.id to it.isPlaying }.distinctUntilChanged().collect { (id, playing) ->
+                if (id == null) reporter.ended() else if (playing) reporter.resumed(id, music.player.currentPosition)
+            }
+        }
         main.launch {
             settings.settings.collect { s ->
                 music.setCrossfade(s.crossfadeSecs)
@@ -140,27 +160,6 @@ class PlaybackStack(
 
     fun clearError() {
         _error.value = null
-    }
-
-    private fun report(event: ScrobbleTracker.Event) {
-        if (!settings.current.reportPlays) return
-        io.launch {
-            try {
-                when (event) {
-                    is ScrobbleTracker.Event.NowPlaying -> sourceOf(event.key)?.reportNowPlaying(event.key, 0)
-                    is ScrobbleTracker.Event.Played -> {
-                        val outbox = recordPlay
-                        if (outbox != null) {
-                            outbox(event.key, event.startedAtMs, (event.heardSecs * 1000).toLong())
-                        } else {
-                            sourceOf(event.key)?.reportPlayed(event.key, Instant.ofEpochMilli(event.startedAtMs))
-                        }
-                    }
-                }
-            } catch (error: Exception) {
-                log.error("plays", "couldn't report a play: ${error.message}")
-            }
-        }
     }
 }
 

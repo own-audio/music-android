@@ -83,6 +83,7 @@ import audio.own.music.library.CatalogueSyncResult
 import audio.own.music.library.ChangeFeedCatalogue
 import audio.own.music.library.ConcertSource
 import audio.own.music.library.ConnectionStatus
+import audio.own.music.library.EditResult
 import audio.own.music.library.FavoriteKind
 import audio.own.music.library.HouseholdCredit
 import audio.own.music.library.HouseholdInfo
@@ -812,10 +813,20 @@ class OwnAudioSource(
         listener.update(ListenerState.Values.fromRows(dao.favourites(serverId), dao.ratings(serverId), state?.userId))
     }
 
-    override suspend fun push(edits: List<OfflineEdit>) {
+    /**
+     * `/sync/push` in batches. An edit the server's answer leaves out counts as taken: it answered
+     * the batch, and sending it again would change nothing.
+     */
+    override suspend fun push(edits: List<OfflineEdit>): List<EditResult> {
         if (client.tokens?.current == null) throw SourceError.Unsupported()
         val changes = edits.map(::change)
-        api { for (batch in changes.chunked(PAGE_MAX)) client.push(batch) }
+        val answers = HashMap<String, audio.own.kit.ownaudio.ItemResult>()
+        api { for (batch in changes.chunked(PAGE_MAX)) client.push(batch).associateByTo(answers) { it.clientId } }
+        return edits.map { edit ->
+            val answer = answers[edit.clientId]
+            val accepted = answer == null || answer.status == "ok" || answer.status == "duplicate"
+            EditResult(edit.clientId, accepted, answer?.status?.takeUnless { accepted })
+        }
     }
 
     fun change(edit: OfflineEdit): OfflineChange {

@@ -2,33 +2,40 @@ package audio.own.musicplayer.servers
 
 import audio.own.core.servers.TypedAddress
 import audio.own.core.strings.R
+import audio.own.kit.jellyfin.ClientInfo
+import audio.own.kit.jellyfin.JellyfinClient
+import audio.own.kit.jellyfin.JellyfinError
+import audio.own.kit.jellyfin.ServerInfo
 import audio.own.kit.ownaudio.Discovery
 import audio.own.kit.ownaudio.OwnAudioClient
 import audio.own.kit.ownaudio.OwnAudioException
 import audio.own.kit.ownaudio.discover
+import audio.own.kit.subsonic.ServerIdentity
+import audio.own.kit.subsonic.SubsonicClient
+import audio.own.kit.subsonic.SubsonicError
 import audio.own.musicplayer.app.AppLog
 import audio.own.musicplayer.app.UserFacingException
-import java.io.IOException
 import java.util.concurrent.TimeUnit
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
-import okhttp3.Request
 
 /** What answered at a typed address. */
 sealed interface Detected {
     /** An own.audio server new enough for this app, at [host]. */
     data class OwnAudio(val host: String, val discovery: Discovery) : Detected
 
-    /** A Subsonic or Jellyfin server: signing in to those comes with later phases. */
-    data class Other(val host: String, val kind: String) : Detected
+    /** A Jellyfin server; [info] carries its identity and the address it sees itself at. */
+    data class Jellyfin(val host: HttpUrl, val info: ServerInfo) : Detected
+
+    /** A Subsonic or OpenSubsonic server (Navidrome, Gonic, …); classic servers name no [identity] type. */
+    data class Subsonic(val host: HttpUrl, val identity: ServerIdentity) : Detected
 }
 
 /**
- * Finds out what kind of server is at a typed address before anything is saved: each candidate
- * (https first, then http) is asked for own.audio's discovery, then whether it answers as
- * Jellyfin or Subsonic. A wrong guess is given up on after [timeoutMs].
+ * Finds out what kind of server is at a typed address before anything is saved: own.audio's
+ * discovery first (https, then http), then Jellyfin's public system info (https, then http on
+ * its port 8096), then a Subsonic `ping`. A wrong guess is given up on after [timeoutMs].
  */
 class ServerDetector(
     http: OkHttpClient,
@@ -37,6 +44,9 @@ class ServerDetector(
     private val timeoutMs: Long = 6_000,
 ) {
     private val quick = http.newBuilder().callTimeout(timeoutMs, TimeUnit.MILLISECONDS).followRedirects(true).build()
+
+    /** Only the User-Agent of it is sent before signing in. */
+    private val anonymous = ClientInfo(client = CLIENT_NAME, device = "", deviceId = "", version = "", userAgent = userAgent)
 
     fun client(host: String): OwnAudioClient = OwnAudioClient(baseUrl = host, http = quick, userAgent = userAgent, requestTimeoutMs = timeoutMs)
 
@@ -47,10 +57,25 @@ class ServerDetector(
         null
     }
 
+    /** Jellyfin's public info at exactly [host], or null. */
+    suspend fun jellyfinInfo(host: HttpUrl): ServerInfo? = try {
+        JellyfinClient.serverInfo(host, anonymous, quick)
+    } catch (e: JellyfinError) {
+        null
+    }
+
+    /** What a Subsonic server at exactly [host] says about itself, or null when none answers. */
+    suspend fun subsonicIdentity(host: HttpUrl): ServerIdentity? = try {
+        SubsonicClient(host, "", "", quick, userAgent).serverIdentity()
+    } catch (e: SubsonicError) {
+        null
+    }
+
     /**
      * @throws UserFacingException with "That doesn't look like a server address." for nothing
-     *   to try, "Couldn't reach the server…" when no candidate answered, and the too-old message
-     *   for an own.audio server without a new enough `/api/v2`.
+     *   to try or an address where something answered but no music server, "Couldn't reach the
+     *   server…" when nothing answered at all, and the too-old message for an own.audio server
+     *   without a new enough `/api/v2`.
      */
     suspend fun detect(typed: String): Detected {
         val candidates = TypedAddress.candidates(typed).filter { it.toHttpUrlOrNull() != null }
@@ -69,30 +94,48 @@ class ServerDetector(
             } catch (e: OwnAudioException) {
                 answered = true
             }
-            otherKind(host)?.let { return Detected.Other(host, it) }
+        }
+        val jellyfin = findJellyfin(typed) { answered = true }
+        if (jellyfin != null) return jellyfin
+        for (candidate in candidates) {
+            val host = SubsonicClient.normalizeHost(candidate) ?: continue
+            try {
+                val identity = SubsonicClient(host, "", "", quick, userAgent).serverIdentity()
+                log.info("servers", "Subsonic server (${identity.type ?: "classic"}) at ${host.host}")
+                return Detected.Subsonic(host, identity)
+            } catch (e: SubsonicError.Network) {
+                continue
+            } catch (e: SubsonicError) {
+                answered = true
+            }
         }
         throw UserFacingException(if (answered) R.string.error_invalid_address else R.string.error_unreachable)
     }
 
-    /** "jellyfin" or "subsonic" when the address answers as one. */
-    private suspend fun otherKind(host: String): String? = withContext(Dispatchers.IO) {
-        val base = host.trimEnd('/')
-        when {
-            get("$base/System/Info/Public")?.let { "\"ServerName\"" in it && "\"Id\"" in it } == true -> "jellyfin"
-            get("$base/rest/ping.view?f=json&v=1.16.1&c=own.music")?.contains("subsonic-response") == true -> "subsonic"
-            else -> null
+    /**
+     * The Jellyfin server at [typed], trying each address Jellyfin's own rules make of it; null
+     * when none answers as Jellyfin. [onAnswer] hears of an address that answered with something
+     * else.
+     */
+    suspend fun findJellyfin(typed: String, onAnswer: () -> Unit = {}): Detected.Jellyfin? {
+        for (host in JellyfinClient.candidateHosts(typed)) {
+            try {
+                val info = JellyfinClient.serverInfo(host, anonymous, quick)
+                log.info("servers", "Jellyfin ${info.version} at ${host.host}")
+                return Detected.Jellyfin(host, info)
+            } catch (e: JellyfinError.Network) {
+                continue
+            } catch (e: JellyfinError) {
+                onAnswer()
+            }
         }
-    }
-
-    private fun get(url: String): String? = try {
-        quick.newCall(Request.Builder().url(url).header("User-Agent", userAgent).build()).execute().use { response ->
-            response.body.string().takeIf { it.length < 64_000 }
-        }
-    } catch (e: IOException) {
-        null
-    } catch (e: IllegalArgumentException) {
-        null
+        return null
     }
 
     private fun hostOnly(url: String) = url.toHttpUrlOrNull()?.host ?: url
+
+    companion object {
+        /** How the app names itself to Jellyfin and Subsonic servers (their dashboards show it). */
+        const val CLIENT_NAME = "own.audio Music"
+    }
 }

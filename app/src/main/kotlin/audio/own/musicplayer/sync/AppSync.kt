@@ -139,7 +139,11 @@ class AppSync(
         return flushed && synced
     }
 
-    private val sender = MusicOutboxSender(sourceForServer) { servers.state.value.server(it) != null }
+    private val sender = MusicOutboxSender(
+        sourceForServer,
+        isKnownServer = { servers.state.value.server(it) != null },
+        onRefused = { change -> library.undoRefused(change.itemId, isFavorite = change.op == OP_FAVOURITE) },
+    )
 
     // endregion
 
@@ -160,14 +164,25 @@ class MusicOutboxSender(
     private val sourceForServer: (String) -> MusicSource?,
     /** Whether a server is saved (a server not saved any more was removed: drop its entries). */
     private val isKnownServer: (String) -> Boolean,
+    /** A favourite or rating the server refused for good: the screen goes back to the server's. */
+    private val onRefused: (PendingChange) -> Unit = {},
 ) : OutboxSender {
     override suspend fun sendChanges(serverId: String, changes: List<PendingChange>): List<Delivery> {
         val source = sourceForServer(serverId) ?: return gone(serverId, changes.size)
         val edits = changes.map { it.edit() }
         if (source is BatchedOfflineEdits) {
             try {
-                source.push(edits.filterNotNull())
-                return changes.map { Delivery.DONE }
+                val sent = changes.zip(edits).filter { it.second != null }
+                val answers = source.push(sent.map { it.second!! }).associateBy { it.clientId }
+                return changes.map { change ->
+                    val answer = answers[change.clientId]
+                    if (answer == null || answer.accepted) {
+                        Delivery.DONE
+                    } else {
+                        onRefused(change)
+                        Delivery.DROP
+                    }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -175,15 +190,17 @@ class MusicOutboxSender(
                 // Signed in the old way, or the request was refused: one at a time below.
             }
         }
-        return changes.map { change -> one { send(source, change) } }
+        return changes.map { change -> one { send(source, change) }.also { if (it == Delivery.DROP) onRefused(change) } }
     }
 
     override suspend fun sendPlays(serverId: String, plays: List<PendingPlay>): List<Delivery> {
         val source = sourceForServer(serverId) ?: return gone(serverId, plays.size)
         if (source is BatchedOfflineEdits) {
             try {
-                source.push(plays.map { OfflineEdit(it.clientId, it.itemId, OfflineEdit.Change.Played(Instant.ofEpochMilli(it.startedAt), it.listenedMs), Instant.ofEpochMilli(it.endedAt)) })
-                return plays.map { Delivery.DONE }
+                val answers = source.push(plays.map { OfflineEdit(it.clientId, it.itemId, OfflineEdit.Change.Played(Instant.ofEpochMilli(it.startedAt), it.listenedMs), Instant.ofEpochMilli(it.endedAt)) })
+                    .associateBy { it.clientId }
+                // A play of a song that is gone is dropped: sending it again changes nothing.
+                return plays.map { if (answers[it.clientId]?.accepted == false) Delivery.DROP else Delivery.DONE }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

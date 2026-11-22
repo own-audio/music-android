@@ -1,6 +1,7 @@
 package audio.own.musicplayer
 
 import android.content.Context
+import androidx.core.content.edit
 import android.os.Build
 import android.provider.Settings
 import androidx.appcompat.app.AppCompatDelegate
@@ -126,12 +127,31 @@ class AppContainer(context: Context) {
         acceptLanguage = { appLocale().toLanguageTag() },
         log = log,
         scope = scope,
+        jellyfinInfo = audio.own.kit.jellyfin.ClientInfo(
+            client = ServerDetector.CLIENT_NAME,
+            device = device.name,
+            deviceId = jellyfinDeviceId(),
+            version = versionName,
+            userAgent = userAgent,
+        ),
     )
+
+    /**
+     * Jellyfin lists sessions by device id; a new one on every launch would leave a trail of
+     * devices in its dashboard. Made once and kept.
+     */
+    private fun jellyfinDeviceId(): String {
+        val prefs = app.getSharedPreferences("jellyfin", Context.MODE_PRIVATE)
+        prefs.getString("deviceId", null)?.let { return it }
+        val id = java.util.UUID.randomUUID().toString()
+        prefs.edit { putString("deviceId", id) }
+        return id
+    }
 
     /** Every server's catalogue; opened on first use, off the main thread. */
     val catalogue: CatalogueDatabase by lazy { CatalogueDatabase.open(app) }
 
-    val sources = SourceRegistry(servers) { catalogue }
+    val sources = SourceRegistry(servers, { catalogue }, answers, log, scope)
 
     val library = LibraryModel(
         servers = servers,
@@ -140,6 +160,8 @@ class AppContainer(context: Context) {
         canSyncNow = { !network.state.value.dataSaver },
         log = log,
         scope = scope,
+        onUnmeteredNetwork = { network.state.value.let { it.connected && !it.metered } },
+        catalogueDb = { catalogue },
     )
 
     fun imageLoader(): ImageLoader = Covers.imageLoader(app, sources::sourceOf, bareHttp)

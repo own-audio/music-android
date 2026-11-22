@@ -4,6 +4,7 @@ import audio.own.core.sync.Delivery
 import audio.own.core.sync.PendingChange
 import audio.own.core.sync.PendingPlay
 import audio.own.music.library.BatchedOfflineEdits
+import audio.own.music.library.EditResult
 import audio.own.music.library.FavoriteKind
 import audio.own.music.library.MusicSource
 import audio.own.music.library.OfflineEdit
@@ -20,9 +21,11 @@ class MusicOutboxSenderTest {
     private class Batched(private val fake: FakeMusicSource = FakeMusicSource()) : MusicSource by fake, BatchedOfflineEdits {
         val pushed = ArrayList<OfflineEdit>()
         var failure: Exception? = null
-        override suspend fun push(edits: List<OfflineEdit>) {
+        var refused: Set<String> = emptySet()
+        override suspend fun push(edits: List<OfflineEdit>): List<EditResult> {
             failure?.let { throw it }
             pushed += edits
+            return edits.map { EditResult(it.clientId, it.clientId !in refused, if (it.clientId in refused) "not_found" else null) }
         }
     }
 
@@ -45,6 +48,26 @@ class MusicOutboxSenderTest {
         val played = server.pushed.last()
         assertEquals("s|t1@5", played.clientId)
         assertEquals(OfflineEdit.Change.Played(java.time.Instant.ofEpochMilli(5), 180_000), played.change)
+    }
+
+    @Test
+    fun `a change the server refused is dropped and undone on screen`() = runTest {
+        val server = Batched().apply { refused = setOf("s|gone/1") }
+        val undone = ArrayList<String>()
+        val sender = MusicOutboxSender({ server }, { true }) { undone += it.itemId }
+        val answers = sender.sendChanges("s", listOf(favourite("s|t1", true), favourite("s|gone", true)))
+        assertEquals(listOf(Delivery.DONE, Delivery.DROP), answers)
+        assertEquals(listOf("s|gone"), undone)
+    }
+
+    @Test
+    fun `a refusal one call at a time is undone too`() = runTest {
+        val server = object : MusicSource by FakeMusicSource() {
+            override suspend fun setRating(id: String, rating: Int) = throw SourceError.NotFound()
+        }
+        val undone = ArrayList<String>()
+        assertEquals(listOf(Delivery.DROP), MusicOutboxSender({ server }, { true }) { undone += it.itemId }.sendChanges("s", listOf(rating("s|a1", 3))))
+        assertEquals(listOf("s|a1"), undone)
     }
 
     @Test(expected = SourceError.Network::class)

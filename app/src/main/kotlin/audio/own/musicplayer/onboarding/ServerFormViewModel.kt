@@ -27,6 +27,10 @@ data class ServerFormState(
     val googleClientId: String? = null,
     /** A sign-in finished: the form closes (Add Server) or the tabs take over (welcome). */
     val done: Boolean = false,
+    /** The Quick Connect screen is open over the form, for the typed address. */
+    val quickConnecting: Boolean = false,
+    /** Counts the times it was opened: each gets a request of its own. */
+    val quickConnectAttempt: Int = 0,
 ) {
     /** Jellyfin allows accounts with no password, so an empty one is fine. */
     val canConnect: Boolean get() = address.isNotBlank() && username.isNotEmpty() && !connecting && !tryingDemo
@@ -45,7 +49,7 @@ class ServerFormViewModel(
     private var lookup: Job? = null
 
     init {
-        viewModelScope.launch { servers.signedIn.collect { _state.update { it.copy(done = true, connecting = false) } } }
+        viewModelScope.launch { servers.signedIn.collect { _state.update { it.copy(done = true, connecting = false, quickConnecting = false) } } }
     }
 
     fun setAddress(value: String) {
@@ -82,8 +86,10 @@ class ServerFormViewModel(
         run({ it.copy(connecting = true) }, { it.copy(connecting = false) }) { servers.signInWithGoogle(s.address, idToken, s.name) }
     }
 
-    /** TODO(M8): Jellyfin's Quick Connect sheet. Until then the form says it is still to come. */
-    fun quickConnect() = _state.update { it.copy(error = UiText(audio.own.core.strings.R.string.error_later_version)) }
+    /** Jellyfin's Quick Connect, for the typed address: its screen opens over the form. */
+    fun quickConnect() = _state.update { if (it.address.isBlank() || it.busy) it else it.copy(quickConnecting = true, quickConnectAttempt = it.quickConnectAttempt + 1, error = null) }
+
+    fun closeQuickConnect() = _state.update { it.copy(quickConnecting = false) }
 
     /** Credential Manager said no for a reason other than the listener cancelling: no button for this server. */
     fun googleFailed(reason: String) {

@@ -26,10 +26,10 @@ the first of the three apps, so the foundation is written here) and the music ap
 | F4 + M3 | Player core and the music engine | ◐ engine and service wired 2026-11-21 (release APK 7.25 MB); open: an audio measurement of gapless, concert chapters, the plays outbox (M6) |
 | M4 | Browsing screens, mini player, full player | ◐ built 2026-11-21 and played on the demo (notification, background, last queue after relaunch, every player sheet); open: guide pages, the scrubber's look, tablet sidebar and output switcher not yet seen on screen |
 | F7 | Welcome, sign-in, server page, family, devices, listening, logs | ◐ built 2026-11-21 for own.audio and tried on the demo; Google waits for the OAuth clients, two-factor and account deletion tested against a fake server only |
-| M5 | Playlists and smart playlists | ◐ library side done 2026-11-21 (smart playlists, playlist edits and reorder); screens next |
+| M5 | Playlists and smart playlists | ◐ screens built 2026-11-22 (Playlists, playlist page and edits, Add to Playlist, smart playlists and the rule editor); the full life cycle on a writable own.audio account is still to try; reorder only on own.audio |
 | F5 + F6 + M6 | Downloads, offline, sync and outboxes | ◐ built 2026-11-21: an album downloaded, survived a kill, played with no network. Open: a writable account to confirm an offline favourite is kept; per-item results from `/sync/push` so a refused change is undone on screen; the streamed copy swapped for the download at the next pause |
-| M7 | Subsonic / OpenSubsonic | ◐ kit and source done 2026-11-21 (live tests pass on Navidrome); app sign-in and wiring next |
-| M8 | Jellyfin | ◐ kit and source done 2026-11-21 (live tests pass); app sign-in, Quick Connect screen, library picker next |
+| M7 | Subsonic / OpenSubsonic | ◐ app wired 2026-11-22: Navidrome signed in, 1557 songs read, songs played, play reports; the end-to-end suite is still to write |
+| M8 | Jellyfin | ◐ app wired 2026-11-22: signed in, played, Instant Mix, library picker, Quick Connect code shown; the end-to-end suite is still to write |
 | M9 | Settings | ☐ |
 | M10 | own.audio extras: sharing, covers, concerts | ◐ library side done 2026-11-21; screens next |
 | M11 | Identify (MusicBrainz) | ◐ library side done 2026-11-21 (runs, review, follower timing); screens next |
@@ -37,7 +37,7 @@ the first of the three apps, so the foundation is written here) and the music ap
 | F9 + M13 | Localization, accessibility, tablets, misuse tests, scale | ☐ |
 | F10 + M14 | Release: Play, F-Droid, guide | ☐ |
 
-**Where we stopped:** F0 and F1 done 2026-11-21 (Gradle 9.9.2, AGP 9.5.2, Kotlin 2.4.21, compileSdk 37.2; release APK 1.6 MB). The server clients `:kit:subsonic` and `:kit:jellyfin` are done (all live tests pass against Navidrome 0.64 and Jellyfin, Quick Connect included); `:kit:ownaudio` (F2) is done too: 74 tests, live tests pass against the public demo, no /api/v1 anywhere; copied to book-android and podcast-android. The three apps are built in parallel: shared modules land here first and are copied to book-android and podcast-android the same day. Both kits define their own small `ResponseCache` and `NetworkLog` interfaces; `:core:servers` (F3) is done: encrypted server records that never write stale tokens back, address scopes and racing by server identity, the network monitor, the offline switch, the answer cache; the per-kind detection flows come with the sign-in screens (F7).
+**Where we stopped:** 2026-11-22 — Music plays from own.audio, Navidrome/Subsonic and Jellyfin, downloads and plays offline, and has playlists and smart playlists. Next: the M10/M11 screens (sharing, covers, concerts, identify), F8/M12 (Android Auto, widget, voice), F9/M13 polish, the guide pages, the end-to-end suite against each server.
 
 ## Rules for whoever executes this plan
 

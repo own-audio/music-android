@@ -302,6 +302,16 @@ class OwnAudioFeedTest {
         }
     }
 
+    @Test fun `each edit gets what the server said of it`() = runBlocking {
+        StubServer { json("""[{"client_id":"a","status":"ok"},{"client_id":"b","status":"not_found"},{"client_id":"c","status":"duplicate"}]""") }.use { stub ->
+            val edits = listOf("a", "b", "c", "d").map { OfflineEdit(it, "$SERVER|t$it", OfflineEdit.Change.Favorite(FavoriteKind.SONG, true), Instant.now()) }
+            val results = source(stub).push(edits)
+            assertEquals(listOf(true, false, true, true), results.map { it.accepted })
+            assertEquals("not_found", results[1].code)
+            assertEquals(listOf("a", "b", "c", "d"), results.map { it.clientId })
+        }
+    }
+
     @Test fun `a server that isn't signed in takes them one at a time`() = runBlocking {
         StubServer { json("[]", 500) }.use { stub ->
             val src = OwnAudioSource(SERVER, "me@example.com", stub.client(signedIn = false), db)

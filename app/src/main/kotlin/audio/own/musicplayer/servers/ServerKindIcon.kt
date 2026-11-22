@@ -23,15 +23,15 @@ fun kindTitle(kind: String): String = when (kind) {
     else -> kind
 }
 
-/**
- * The server's kind at a glance. own.audio's logo now; the Jellyfin and OpenSubsonic logos come
- * with those kinds (M7, M8), a server symbol until then.
- */
+/** The server's kind at a glance: own.audio's, Jellyfin's or OpenSubsonic's logo. */
 @Composable
 fun ServerKindIcon(kind: String, modifier: Modifier = Modifier, size: Dp = 28.dp) {
     val shape = RoundedCornerShape(size * 0.22f)
     when (kind) {
         ServerKinds.OWN_AUDIO -> Image(painterResource(R.drawable.ic_server_own_audio), contentDescription = kindTitle(kind), modifier = modifier.size(size).clip(shape))
+        ServerKinds.JELLYFIN -> Image(painterResource(R.drawable.ic_server_jellyfin), contentDescription = kindTitle(kind), modifier = modifier.size(size))
+        // Drawn in one colour, so it follows the text in light and dark.
+        ServerKinds.SUBSONIC -> Icon(painterResource(R.drawable.ic_server_opensubsonic), contentDescription = kindTitle(kind), tint = LocalPalette.current.foreground, modifier = modifier.size(size))
         else -> Icon(Icons.Filled.Dns, contentDescription = kindTitle(kind), tint = LocalPalette.current.foreground, modifier = modifier.size(size))
     }
 }

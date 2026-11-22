@@ -72,18 +72,6 @@ class ServersModelTest {
     }
 
     @Test
-    fun jellyfinIsLeftForALaterVersion() {
-        fake.extra = { request ->
-            when (request.url.encodedPath) {
-                "/.well-known/own-audio" -> MockResponse.Builder().code(404).body("not here").build()
-                "/System/Info/Public" -> FakeOwnAudio.json("""{"ServerName":"Den","Id":"abc","Version":"10.11"}""")
-                else -> null
-            }
-        }
-        expectMessage(R.string.error_later_version) { model.signIn(fake.url, "a", "b", "") }
-    }
-
-    @Test
     fun nothingAnsweringIsUnreachable() {
         expectMessage(R.string.error_unreachable) { model.signIn("http://127.0.0.1:9", "a", "b", "") }
     }

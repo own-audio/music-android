@@ -14,6 +14,8 @@ import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -93,6 +95,16 @@ fun AlbumContent(state: Load<AlbumWithSongs>, known: Album?, onBack: () -> Unit,
                         val songs = loaded?.songs.orEmpty()
                         if (songs.isNotEmpty()) QueueMenuItems(songs) { menu = false }
                         if (ui.canRate) RatingMenuItem(ui.rating(album.id, album.rating)) { rating = true }
+                        InstantMixItem(album.id) { menu = false }
+                        val add = ui.addToPlaylist
+                        if (add != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.add_album_to_playlist)) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null) },
+                                enabled = songs.isNotEmpty(),
+                                onClick = { menu = false; add(songs.map { it.id }) },
+                            )
+                        }
                     }
                     if (rating) RatingChoices(ui.rating(album.id, album.rating), onDismiss = { rating = false; menu = false }) { ui.setRating(album.id, it, FavoriteKind.ALBUM) }
                 }

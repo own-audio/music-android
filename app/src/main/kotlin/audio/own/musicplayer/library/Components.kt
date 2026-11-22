@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
@@ -76,6 +77,7 @@ import audio.own.music.library.AlbumSort
 import audio.own.music.library.FavoriteKind
 import audio.own.music.library.model.Album
 import audio.own.music.library.model.Artist
+import audio.own.music.library.model.Playlist
 import audio.own.music.library.model.Sharing
 import audio.own.music.library.model.Song
 import audio.own.musicplayer.R
@@ -109,6 +111,12 @@ class LibraryUi(
     val isCollectionDownloading: (collectionId: String) -> Boolean = { false },
     val downloadSong: (Song) -> Unit = {},
     val downloadAlbum: (Album, List<Song>) -> Unit = { _, _ -> },
+    val downloadPlaylist: (Playlist, List<Song>) -> Unit = { _, _ -> },
+    /** Songs like a song or an album, picked by the server (Jellyfin); hidden offline. */
+    val canInstantMix: Boolean = false,
+    val instantMix: (itemId: String) -> Unit = {},
+    /** Opens Add to Playlist for these songs; null where it can't be offered. */
+    val addToPlaylist: ((songIds: List<String>) -> Unit)? = null,
     val removeDownload: (id: String) -> Unit = {},
     val removeCollection: (collectionId: String) -> Unit = {},
 ) {
@@ -252,6 +260,10 @@ fun SongRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     showsCover: Boolean = false,
+    /** Items of the page it is on, at the end of its menu (Remove from Playlist). */
+    menuExtra: (@Composable (dismiss: () -> Unit) -> Unit)? = null,
+    /** Shown after the duration, before the menu: a drag handle. */
+    trailing: @Composable () -> Unit = {},
 ) {
     val ui = LocalLibraryUi.current
     val palette = LocalPalette.current
@@ -301,8 +313,9 @@ fun SongRow(
             IconButton(onClick = { menu = true }) {
                 Icon(Icons.Filled.MoreHoriz, contentDescription = stringResource(SR.string.more), tint = palette.muted)
             }
-            SongMenu(song, expanded = menu, onDismiss = { menu = false })
+            SongMenu(song, expanded = menu, onDismiss = { menu = false }, extra = menuExtra)
         }
+        trailing()
     }
 }
 
@@ -310,12 +323,12 @@ fun SongRow(
 const val UNAVAILABLE_ALPHA = 0.4f
 
 /**
- * The song's actions that work today: Play Next, Add to Queue, Favorite, Rate, Download or
- * Remove Download. The others of the iOS menu (Add to Playlist, Instant Mix, covers, sharing,
- * Identify) come with the phases that build them.
+ * The song's actions: Play Next, Add to Queue, Favorite, Rate, Instant Mix (where the server
+ * makes one), Add to Playlist…, Download or Remove Download, then the page's own [extra]. The
+ * others of the iOS menu (covers, sharing, Identify) come with the phases that build them.
  */
 @Composable
-fun SongMenu(song: Song, expanded: Boolean, onDismiss: () -> Unit) {
+fun SongMenu(song: Song, expanded: Boolean, onDismiss: () -> Unit, extra: (@Composable (dismiss: () -> Unit) -> Unit)? = null) {
     val ui = LocalLibraryUi.current
     var rating by remember { mutableStateOf(false) }
     DropdownMenu(expanded = expanded && !rating, onDismissRequest = onDismiss) {
@@ -328,6 +341,14 @@ fun SongMenu(song: Song, expanded: Boolean, onDismiss: () -> Unit) {
         )
         if (ui.canRate) {
             RatingMenuItem(ui.rating(song)) { rating = true }
+        }
+        InstantMixItem(song.id, onDismiss)
+        ui.addToPlaylist?.let { open ->
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.add_to_playlist_ellipsis)) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.PlaylistAdd, contentDescription = null) },
+                onClick = { onDismiss(); open(listOf(song.id)) },
+            )
         }
         if (ui.isDownloaded(song.id)) {
             DropdownMenuItem(
@@ -342,10 +363,23 @@ fun SongMenu(song: Song, expanded: Boolean, onDismiss: () -> Unit) {
                 onClick = { onDismiss(); ui.downloadSong(song) },
             )
         }
+        extra?.invoke(onDismiss)
     }
     if (rating) {
         RatingChoices(ui.rating(song), onDismiss = { rating = false; onDismiss() }) { ui.setRating(song.id, it, FavoriteKind.SONG) }
     }
+}
+
+/** Instant Mix from a song or an album, where the server makes one and there is a network. */
+@Composable
+fun InstantMixItem(itemId: String, onDismiss: () -> Unit) {
+    val ui = LocalLibraryUi.current
+    if (!ui.canInstantMix || ui.isOffline) return
+    DropdownMenuItem(
+        text = { Text(stringResource(R.string.instant_mix)) },
+        leadingIcon = { Icon(Icons.Filled.AutoAwesome, contentDescription = null) },
+        onClick = { onDismiss(); ui.instantMix(itemId) },
+    )
 }
 
 @Composable

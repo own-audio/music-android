@@ -14,6 +14,11 @@ import audio.own.core.servers.ServerStore
 import audio.own.core.servers.StoredTokens
 import audio.own.core.servers.TypedAddress
 import audio.own.core.strings.R
+import audio.own.kit.jellyfin.ClientInfo
+import audio.own.kit.jellyfin.JellyfinClient
+import audio.own.kit.jellyfin.JellyfinError
+import audio.own.kit.jellyfin.QuickConnect
+import audio.own.kit.jellyfin.Session
 import audio.own.kit.ownaudio.AnswerCache
 import audio.own.kit.ownaudio.Discovery
 import audio.own.kit.ownaudio.OwnAudioClient
@@ -31,6 +36,9 @@ import audio.own.kit.ownaudio.register
 import audio.own.kit.ownaudio.revokeAllSessions
 import audio.own.kit.ownaudio.signIn
 import audio.own.kit.ownaudio.signOut
+import audio.own.kit.subsonic.ConnectionStatus as SubsonicStatus
+import audio.own.kit.subsonic.SubsonicClient
+import audio.own.musicplayer.R as AppR
 import audio.own.musicplayer.app.AppLog
 import audio.own.musicplayer.app.AppPreferences
 import audio.own.musicplayer.app.UserFacingException
@@ -54,6 +62,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 
@@ -131,6 +140,8 @@ class ServersModel(
     val hostedService: String = HOSTED_SERVICE,
     private val demoServer: String = DEMO_SERVER,
     private val clock: Clock = Clock.systemUTC(),
+    /** How the app introduces itself to Jellyfin; its device id stays the same across launches. */
+    val jellyfinInfo: ClientInfo = ClientInfo(ServerDetector.CLIENT_NAME, device.name, "own-music-test", "1.0", userAgent),
 ) {
     private val _state = MutableStateFlow(ServersState())
     val state: StateFlow<ServersState> = _state.asStateFlow()
@@ -195,6 +206,55 @@ class ServersModel(
 
     private fun unsigned(host: String) = OwnAudioClient(baseUrl = host, http = http, userAgent = userAgent, acceptLanguage = acceptLanguage())
 
+    /** The address a saved server is talked to at now: the fixed one, the fastest found, or the one it was added with. */
+    fun address(serverId: String): String? = _state.value.server(serverId)?.let(::baseUrl)
+
+    /** Jellyfin's client for a saved Jellyfin server, limited to its chosen music library. */
+    fun jellyfinClient(
+        serverId: String,
+        cache: audio.own.kit.jellyfin.ResponseCache? = null,
+        log: audio.own.kit.jellyfin.NetworkLog = audio.own.kit.jellyfin.NetworkLog.None,
+    ): JellyfinClient? {
+        val record = _state.value.server(serverId) ?: return null
+        val auth = record.auth as? ServerAuth.Jellyfin ?: return null
+        val token = auth.token ?: return null
+        val host = baseUrl(record).toHttpUrlOrNull() ?: return null
+        return JellyfinClient(
+            host = host,
+            session = Session(auth.userId, auth.userName, token, record.serverIdentity.orEmpty()),
+            clientInfo = jellyfinInfo,
+            http = http,
+            libraryId = record.libraryId,
+            cache = cache,
+            isOffline = isOffline,
+            cacheIdentity = record.serverIdentity ?: record.id,
+            log = log,
+        )
+    }
+
+    /** The Subsonic client for a saved Subsonic server; it signs every request with the kept password. */
+    fun subsonicClient(
+        serverId: String,
+        cache: audio.own.kit.subsonic.ResponseCache? = null,
+        log: audio.own.kit.subsonic.NetworkLog = audio.own.kit.subsonic.NetworkLog.None,
+    ): SubsonicClient? {
+        val record = _state.value.server(serverId) ?: return null
+        val auth = record.auth as? ServerAuth.Subsonic ?: return null
+        val host = SubsonicClient.normalizeHost(baseUrl(record)) ?: return null
+        return SubsonicClient(
+            host = host,
+            username = auth.userName,
+            password = auth.password,
+            http = http,
+            userAgent = userAgent,
+            clientName = ServerDetector.CLIENT_NAME,
+            cache = cache,
+            isOffline = isOffline,
+            cacheIdentity = record.serverIdentity ?: record.id,
+            log = log,
+        )
+    }
+
     // endregion
 
     // region Adding a server
@@ -205,10 +265,8 @@ class ServersModel(
      */
     suspend fun signIn(address: String, username: String, password: String, name: String, replacing: String? = null) {
         when (val found = detector.detect(address)) {
-            is Detected.Other -> {
-                // TODO(M7, M8): sign in to Subsonic and Jellyfin servers here.
-                throw UserFacingException(R.string.error_later_version)
-            }
+            is Detected.Jellyfin -> signInJellyfin(found, username.trim(), password, name, replacing)
+            is Detected.Subsonic -> signInSubsonic(found, username.trim(), password, name, replacing)
             is Detected.OwnAudio -> {
                 val tokens = try {
                     unsigned(found.host).signIn(username.trim(), password, device)
@@ -225,6 +283,134 @@ class ServersModel(
             }
         }
     }
+
+    /** Jellyfin by username and password (which may be empty); only the session's token is kept. */
+    private suspend fun signInJellyfin(found: Detected.Jellyfin, username: String, password: String, name: String, replacing: String?) {
+        val session = try {
+            JellyfinClient.signIn(found.host, username, password, jellyfinInfo, http)
+        } catch (e: JellyfinError.Unauthorized) {
+            throw UserFacingException(R.string.error_rejected, e)
+        } catch (e: JellyfinError.Network) {
+            throw UserFacingException(R.string.error_unreachable, e)
+        } catch (e: JellyfinError) {
+            throw UserFacingException(R.string.error_rejected, e)
+        }
+        saveJellyfin(found, session, name, replacing)
+    }
+
+    /**
+     * Saves a Jellyfin server signed in by password or Quick Connect, or puts the sign-in on the
+     * saved one. The address the server sees itself at is learned as one more to try.
+     */
+    suspend fun saveJellyfin(found: Detected.Jellyfin, session: Session, name: String, replacing: String? = null) {
+        val host = found.host.toString().trimEnd('/')
+        val learned = listOfNotNull(found.info.localAddress?.takeIf { it.toHttpUrlOrNull() != null }?.let { ServerAddress.of(it.trimEnd('/'), AddressOrigin.SERVER) })
+        val record = ServerRecord(
+            id = UUID.randomUUID().toString(),
+            kind = ServerKinds.JELLYFIN,
+            displayName = name.trim().ifEmpty { found.info.serverName.ifBlank { found.host.host } },
+            host = host,
+            auth = ServerAuth.Jellyfin(session.userName, session.userId, session.accessToken),
+            serverIdentity = found.info.id.ifBlank { null },
+            userId = session.userId,
+            addedAtEpochMs = clock.millis(),
+        ).learning(learned)
+        finishOther(record, replacing)
+    }
+
+    /**
+     * A Subsonic server: the protocol has no sign-in step, so `ping` with the token made from the
+     * password tells whether it is right, and the password is kept to sign every request.
+     */
+    private suspend fun signInSubsonic(found: Detected.Subsonic, username: String, password: String, name: String, replacing: String?) {
+        val client = SubsonicClient(found.host, username, password, http, userAgent, clientName = ServerDetector.CLIENT_NAME)
+        when (client.checkConnection()) {
+            SubsonicStatus.Ok -> Unit
+            SubsonicStatus.Rejected -> throw UserFacingException(R.string.error_rejected)
+            SubsonicStatus.Unsupported -> throw UserFacingException(AppR.string.error_token_sign_in_refused)
+            SubsonicStatus.Unreachable -> throw UserFacingException(R.string.error_unreachable)
+        }
+        val record = ServerRecord(
+            id = UUID.randomUUID().toString(),
+            kind = ServerKinds.SUBSONIC,
+            displayName = name.trim().ifEmpty { found.host.host },
+            host = found.host.toString().trimEnd('/'),
+            auth = ServerAuth.Subsonic(username, password),
+            addedAtEpochMs = clock.millis(),
+        )
+        log.info("servers", "Subsonic server ${found.identity.type ?: "classic"} ${found.identity.serverVersion.orEmpty()}".trim())
+        finishOther(record, replacing)
+    }
+
+    private suspend fun finishOther(record: ServerRecord, replacing: String?) {
+        if (replacing != null) {
+            replaceSignIn(replacing, record)
+        } else {
+            store.add(record)
+            _state.update { it.copy(servers = it.servers + record, activeId = record.id) }
+            preferences.setActiveServerId(record.id)
+            log.info("servers", "added ${record.displayName} (${record.kind})")
+            scope.launch { chooseAddress(record.id) }
+        }
+        _signedIn.tryEmit(replacing ?: record.id)
+    }
+
+    // region Quick Connect
+
+    /**
+     * The Jellyfin server at [address] for Quick Connect, once it is known to offer it.
+     * @throws UserFacingException when there is no Jellyfin there, or Quick Connect is off.
+     */
+    suspend fun quickConnectServer(address: String): Detected.Jellyfin {
+        if (address.isBlank()) throw UserFacingException(R.string.error_invalid_address)
+        val found = detector.findJellyfin(address) ?: throw UserFacingException(AppR.string.quick_connect_no_jellyfin)
+        if (!JellyfinClient.isQuickConnectEnabled(found.host, jellyfinInfo, http)) throw UserFacingException(AppR.string.quick_connect_off)
+        return found
+    }
+
+    suspend fun startQuickConnect(host: HttpUrl): QuickConnect = jellyfin { JellyfinClient.startQuickConnect(host, jellyfinInfo, http) }
+
+    suspend fun checkQuickConnect(host: HttpUrl, secret: String): QuickConnect = jellyfin { JellyfinClient.checkQuickConnect(host, secret, jellyfinInfo, http) }
+
+    /** The approved request's session, saved as the server (or as the new sign-in of [replacing]). */
+    suspend fun finishQuickConnect(found: Detected.Jellyfin, secret: String, name: String, replacing: String? = null) {
+        val session = jellyfin { JellyfinClient.finishQuickConnect(found.host, secret, jellyfinInfo, http) }
+        saveJellyfin(found, session, name, replacing)
+    }
+
+    private suspend fun <T> jellyfin(work: suspend () -> T): T = try {
+        work()
+    } catch (e: JellyfinError.Network) {
+        throw UserFacingException(R.string.error_unreachable, e)
+    } catch (e: JellyfinError) {
+        throw UserFacingException(AppR.string.quick_connect_failed, e)
+    }
+
+    // endregion
+
+    // region Music library (Jellyfin)
+
+    /** Every music library of a Jellyfin server, whichever is chosen now. */
+    suspend fun musicLibraries(serverId: String): List<audio.own.kit.jellyfin.JellyfinLibrary> {
+        val client = jellyfinClient(serverId) ?: return emptyList()
+        return try {
+            JellyfinClient(client.host, client.session, jellyfinInfo, http).musicLibraries()
+        } catch (e: JellyfinError) {
+            throw UserFacingException(AppR.string.libraries_failed, e)
+        }
+    }
+
+    /** Shows one music library of the server, or all of them with null. Saved answers are of the old choice. */
+    suspend fun setLibrary(serverId: String, libraryId: String?, libraries: List<audio.own.core.servers.ServerLibraryRef>? = null) {
+        val record = _state.value.server(serverId) ?: return
+        if (record.libraryId == libraryId) return
+        store.update(record.copy(libraryId = libraryId, libraries = libraries ?: record.libraries))
+        reload()
+        clearCache()
+        log.info("servers", if (libraryId == null) "all music libraries" else "one music library chosen")
+    }
+
+    // endregion
 
     suspend fun finishTwoFactor(code: String) {
         val pending = _state.value.pendingTwoFactor ?: return
@@ -434,6 +620,9 @@ class ServersModel(
     suspend fun remove(id: String) {
         val client = client(id)
         if (client != null) scope.launch { runCatching { client.signOut() } }
+        // Jellyfin lists the device in its dashboard until the session ends.
+        val jellyfin = jellyfinClient(id)
+        if (jellyfin != null) scope.launch { runCatching { jellyfin.signOut() } }
         sessions.remove(id)
         store.remove(id)
         // Saved answers are filed by server; letting the others be fetched again is simpler than
@@ -496,13 +685,12 @@ class ServersModel(
      */
     suspend fun chooseAddress(id: String) {
         val record = _state.value.server(id) ?: return
-        if (record.kind != ServerKinds.OWN_AUDIO) return
         _state.update { it.copy(connections = it.connections + (id to ConnectionState.Checking)) }
         val candidates = when (val mode = record.connection) {
             is ConnectionMode.Fixed -> listOf(mode.url)
             ConnectionMode.Automatic -> record.candidateAddresses.map { it.url }
         }
-        val winner = AddressRace.race(record, candidates, record.serverIdentity) { url -> check(url) }
+        val winner = AddressRace.race(record, candidates, record.serverIdentity) { url -> check(record.kind, url) }
         if (winner == null) {
             log.error("servers", "no address of ${record.displayName} answers")
             _state.update { it.copy(connections = it.connections + (id to ConnectionState.Unreachable)) }
@@ -518,9 +706,28 @@ class ServersModel(
         }
     }
 
-    private suspend fun check(url: String): AddressCheck? = withTimeoutOrNull(AddressRace.TIMEOUT_MS) {
-        val found = detector.discovery(url) ?: return@withTimeoutOrNull null
-        AddressCheck(url, found.id, found.addresses.map { ServerAddress.of(it.url, AddressOrigin.SERVER, AddressScope.fromWire(it.scope)) })
+    /**
+     * What [url] answers, asked the way its kind is: own.audio's discovery (which names more
+     * addresses), Jellyfin's public info (its identity and the address it sees itself at), a
+     * Subsonic `ping` (no identity: any Subsonic server there counts).
+     */
+    private suspend fun check(kind: String, url: String): AddressCheck? = withTimeoutOrNull(AddressRace.TIMEOUT_MS) {
+        when (kind) {
+            ServerKinds.JELLYFIN -> {
+                val host = url.toHttpUrlOrNull() ?: return@withTimeoutOrNull null
+                val info = detector.jellyfinInfo(host) ?: return@withTimeoutOrNull null
+                AddressCheck(url, info.id, listOfNotNull(info.localAddress?.takeIf { it.toHttpUrlOrNull() != null }?.let { ServerAddress.of(it.trimEnd('/'), AddressOrigin.SERVER) }))
+            }
+            ServerKinds.SUBSONIC -> {
+                val host = SubsonicClient.normalizeHost(url) ?: return@withTimeoutOrNull null
+                detector.subsonicIdentity(host) ?: return@withTimeoutOrNull null
+                AddressCheck(url, null)
+            }
+            else -> {
+                val found = detector.discovery(url) ?: return@withTimeoutOrNull null
+                AddressCheck(url, found.id, found.addresses.map { ServerAddress.of(it.url, AddressOrigin.SERVER, AddressScope.fromWire(it.scope)) })
+            }
+        }
     }
 
     /** Picks the address again, then asks the server whether it accepts the sign-in. */
@@ -531,6 +738,18 @@ class ServersModel(
             chooseAddress(id)
             val status = if (_state.value.connections[id] is ConnectionState.Unreachable) {
                 ConnectionCheck.Status.UNREACHABLE
+            } else if (_state.value.server(id)?.kind == ServerKinds.JELLYFIN) {
+                when (jellyfinClient(id)?.checkSession()) {
+                    audio.own.kit.jellyfin.ConnectionStatus.Ok -> ConnectionCheck.Status.OK
+                    audio.own.kit.jellyfin.ConnectionStatus.Unreachable -> ConnectionCheck.Status.UNREACHABLE
+                    else -> ConnectionCheck.Status.REJECTED
+                }
+            } else if (_state.value.server(id)?.kind == ServerKinds.SUBSONIC) {
+                when (subsonicClient(id)?.checkConnection()) {
+                    SubsonicStatus.Ok -> ConnectionCheck.Status.OK
+                    SubsonicStatus.Unreachable -> ConnectionCheck.Status.UNREACHABLE
+                    else -> ConnectionCheck.Status.REJECTED
+                }
             } else {
                 try {
                     client(id)?.me()

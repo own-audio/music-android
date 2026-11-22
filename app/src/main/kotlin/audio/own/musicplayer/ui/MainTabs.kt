@@ -38,6 +38,8 @@ import audio.own.music.library.MusicSource
 import audio.own.music.library.model.Song
 import audio.own.core.servers.CompositeId
 import audio.own.musicplayer.library.HomeViewModel
+import audio.own.musicplayer.library.AddToPlaylistSheet
+import audio.own.musicplayer.library.AddToPlaylistViewModel
 import audio.own.musicplayer.library.LibraryContent
 import audio.own.musicplayer.library.LibraryEnv
 import audio.own.musicplayer.library.LibraryRoutes
@@ -45,11 +47,11 @@ import audio.own.musicplayer.library.LibrarySection
 import audio.own.musicplayer.library.LibrarySidebar
 import audio.own.musicplayer.library.LibraryUi
 import audio.own.musicplayer.library.LocalLibraryUi
-import audio.own.musicplayer.library.PlaylistsLater
 import audio.own.musicplayer.library.SearchViewModel
 import audio.own.musicplayer.library.libraryDestinations
 import audio.own.musicplayer.library.openAlbum
 import audio.own.musicplayer.library.openArtist
+import audio.own.musicplayer.library.openPlaylist
 import audio.own.musicplayer.player.MiniPlayer
 import audio.own.musicplayer.search.SearchContent
 import kotlinx.coroutines.launch
@@ -90,7 +92,7 @@ fun MainTabs(container: AppContainer, onSettings: () -> Unit, onOpenPlayer: () -
                     }
                     Tab.LIBRARY -> LibraryTab(container, env, nav)
                     Tab.PLAYLISTS -> NavHost(nav, startDestination = "playlists-root") {
-                        composable("playlists-root") { PlaylistsLater(null) }
+                        composable("playlists-root") { audio.own.musicplayer.library.PlaylistsRoute(env, nav, null) }
                         libraryDestinations(nav, env)
                     }
                     Tab.DOWNLOADS -> NavHost(nav, startDestination = "downloads-root") {
@@ -155,6 +157,7 @@ private fun ProvideLibraryUi(container: AppContainer, onError: (Throwable) -> Un
     val downloads = container.downloads
     val background = container.scope
     val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    var adding by remember { mutableStateOf<List<String>?>(null) }
     val ui = remember(playback.currentTrack?.id, playback.isPlaying, features, favorites, ratings, sync.revision, offline.isOffline, downloadsState) {
         val snapshot = downloadsState
         val isDownloaded: (String) -> Boolean = snapshot::isDownloaded
@@ -194,11 +197,42 @@ private fun ProvideLibraryUi(container: AppContainer, onError: (Throwable) -> Un
                 prefetchCover(context, album.coverArt ?: album.id)
                 background.launch { downloads.download(album, songs) }
             },
+            downloadPlaylist = { playlist, songs ->
+                playlist.coverArt?.let { prefetchCover(context, it) }
+                background.launch { downloads.download(playlist, songs) }
+            },
+            canInstantMix = Capability.INSTANT_MIX in features.capabilities,
+            instantMix = { itemId ->
+                scope.launch {
+                    try {
+                        val songs = library.activeSource?.instantMix(itemId).orEmpty()
+                        if (songs.isEmpty()) onError(audio.own.music.library.SourceError.NotFound()) else model.play(songs, null, false, "mix:$itemId")
+                    } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        onError(e)
+                    }
+                }
+            },
+            addToPlaylist = { ids -> adding = ids },
             removeDownload = { id -> background.launch { downloads.remove(id) } },
             removeCollection = { id -> background.launch { downloads.removeCollection(id) } },
         )
     }
-    CompositionLocalProvider(LocalLibraryUi provides ui, content = content)
+    CompositionLocalProvider(LocalLibraryUi provides ui) {
+        content()
+        adding?.let { ids ->
+            val source = library.activeSource
+            if (source != null) {
+                val vm = viewModel(key = "add-${ids.hashCode()}") {
+                    AddToPlaylistViewModel(source, ids, library.activeServer?.auth?.userName, onError, background)
+                }
+                val state by vm.state.collectAsStateWithLifecycle()
+                LaunchedEffect(state.done) { if (state.done) adding = null }
+                AddToPlaylistSheet(state, onDismiss = { adding = null }, onRetry = vm::load, onAdd = vm::add, onCreate = vm::create)
+            }
+        }
+    }
 }
 
 @UnstableApi
@@ -262,7 +296,7 @@ private fun HomeRoute(container: AppContainer, env: LibraryEnv, nav: NavHostCont
         },
         onRetry = vm::load,
         onAlbum = { nav.openAlbum(env, it) },
-        onPlaylist = { nav.navigate(LibraryRoutes.PLAYLISTS) },
+        onPlaylist = { nav.openPlaylist(env, it) },
         onShelf = { shelf ->
             when (shelf) {
                 HomeShelf.RECENTLY_PLAYED -> nav.navigate(LibraryRoutes.albums(AlbumSort.RECENTLY_PLAYED))

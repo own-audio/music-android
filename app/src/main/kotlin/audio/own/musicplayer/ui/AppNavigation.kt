@@ -35,9 +35,12 @@ import audio.own.musicplayer.onboarding.AddServerContent
 import audio.own.musicplayer.onboarding.OnboardingContent
 import audio.own.musicplayer.onboarding.OwnAudioAccountContent
 import audio.own.musicplayer.onboarding.OwnAudioAccountViewModel
+import audio.own.musicplayer.onboarding.QuickConnectContent
+import audio.own.musicplayer.onboarding.QuickConnectViewModel
 import audio.own.musicplayer.onboarding.ServerFormViewModel
 import audio.own.musicplayer.onboarding.TwoFactorContent
 import audio.own.musicplayer.onboarding.TwoFactorViewModel
+import audio.own.musicplayer.servers.CatalogueUi
 import audio.own.musicplayer.servers.ServerDetailContent
 import audio.own.musicplayer.servers.ServerDetailViewModel
 import audio.own.musicplayer.servers.ServerDetector
@@ -213,11 +216,13 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
                 onQuickConnect = vm::quickConnect,
                 onGoogle = { state.googleClientId?.let(google) },
             )
+            if (state.quickConnecting) QuickConnectOverlay(container, state.address, state.name, state.quickConnectAttempt, onClose = vm::closeQuickConnect)
         }
         composable(Routes.SERVER) { entry ->
             val id = arg(entry)
-            val vm = viewModel { ServerDetailViewModel(id, container.servers, ServerDetector(container.http, container.userAgent, container.log), container.log) }
+            val vm = viewModel { ServerDetailViewModel(id, container.servers, ServerDetector(container.http, container.userAgent, container.log), container.log, container.library) }
             val detail by vm.state.collectAsStateWithLifecycle()
+            val sync by container.library.sync.collectAsStateWithLifecycle()
             LaunchedEffect(detail.gone) { if (detail.gone) nav.popBackStack() }
             val record = servers.server(id)
             if (record == null) {
@@ -233,6 +238,16 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
                     checking = id in servers.checking,
                     refused = servers.isRefused(id),
                     detail = detail,
+                    catalogue = CatalogueUi(
+                        songs = detail.catalogue?.songs,
+                        albums = detail.catalogue?.albums,
+                        syncedAtMs = detail.catalogue?.syncedAtMs,
+                        syncing = id in sync.syncing,
+                        error = sync.failures[id]?.text(),
+                        offline = container.offline.isOffline,
+                    ),
+                    libraryName = record.libraryId?.let { chosen -> record.libraries?.firstOrNull { it.id == chosen }?.name }
+                        ?: stringResource(AppR.string.all_music_libraries),
                 ),
                 onBack = back,
                 onUse = { vm.use() },
@@ -248,6 +263,10 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
                 onRemoveAddress = { vm.removeAddress(it) },
                 onRemove = vm::remove,
                 onDismissError = vm::dismissErrors,
+                onMusicLibrary = vm::openLibraries,
+                onUpdateNow = vm::updateNow,
+                onChooseLibrary = vm::chooseLibrary,
+                onCloseLibraries = vm::closeLibraries,
             )
         }
         composable(Routes.SIGN_IN_AGAIN) { entry ->
@@ -336,6 +355,23 @@ private fun WelcomeRoute(container: AppContainer, onAccount: (AccountMode) -> Un
         onQuickConnect = vm::quickConnect,
         onGoogle = { state.googleClientId?.let(google) },
     )
+    if (state.quickConnecting) QuickConnectOverlay(container, state.address, state.name, state.quickConnectAttempt, onClose = vm::closeQuickConnect)
+}
+
+/** Quick Connect over the form that opened it; a sign-in closes both. */
+@Composable
+private fun QuickConnectOverlay(container: AppContainer, address: String, name: String, attempt: Int, onClose: () -> Unit) {
+    val vm = viewModel(key = "quick-connect-$attempt") { QuickConnectViewModel(container.servers, address, name, container.log) }
+    val close = {
+        vm.cancel()
+        onClose()
+    }
+    Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier, color = MaterialTheme.colorScheme.background) {
+            val state by vm.state.collectAsStateWithLifecycle()
+            QuickConnectContent(state, onCancel = close, onTryAgain = vm::run)
+        }
+    }
 }
 
 /** Asks Google for an id token made for [String] (the server's web client id). */

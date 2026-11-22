@@ -56,6 +56,7 @@ import audio.own.core.servers.ServerAddress
 import audio.own.core.servers.ServerAuth
 import audio.own.core.servers.ServerRecord
 import audio.own.core.strings.R
+import audio.own.musicplayer.R as AppR
 import audio.own.musicplayer.app.text
 import audio.own.musicplayer.settings.RemoveServerDialog
 import audio.own.musicplayer.ui.ButtonRow
@@ -74,7 +75,45 @@ data class ServerPageUi(
     val checking: Boolean,
     val refused: Boolean,
     val detail: ServerDetailState,
+    val catalogue: CatalogueUi = CatalogueUi(),
+    /** The Jellyfin music library shown, or null for all of them. */
+    val libraryName: String? = null,
 )
+
+/** "Library on This Device": what is kept, when it was read, whether it is being read now. */
+data class CatalogueUi(
+    val songs: Int? = null,
+    val albums: Int? = null,
+    val syncedAtMs: Long? = null,
+    val syncing: Boolean = false,
+    val error: String? = null,
+    val offline: Boolean = false,
+)
+
+@Composable
+private fun CatalogueRow(c: CatalogueUi) {
+    val palette = LocalPalette.current
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = Tokens.minTarget).padding(horizontal = Tokens.Spacing.lg, vertical = Tokens.Spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        when {
+            c.syncing -> {
+                Text(stringResource(AppR.string.updating), modifier = Modifier.weight(1f))
+                androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            }
+            c.songs != null && c.albums != null && c.syncedAtMs != null -> {
+                val ago = android.text.format.DateUtils.getRelativeTimeSpanString(c.syncedAtMs, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS).toString()
+                TwoLines(stringResource(AppR.string.catalogue_counts, c.songs, c.albums), stringResource(AppR.string.catalogue_updated, ago))
+            }
+            c.error != null -> {
+                Icon(Icons.Filled.Error, contentDescription = null, tint = palette.muted, modifier = Modifier.size(18.dp))
+                Text(c.error, color = palette.muted, modifier = Modifier.padding(start = Tokens.Spacing.sm))
+            }
+            else -> Text(stringResource(AppR.string.catalogue_not_yet), color = palette.muted)
+        }
+    }
+}
 
 /** Orange for "not now", as iOS's status lines; the app's accent read as an error beside them. */
 private val Caution = Color(0xFFFF9500)
@@ -96,6 +135,10 @@ fun ServerDetailContent(
     onRemoveAddress: (String) -> Unit,
     onRemove: () -> Unit,
     onDismissError: () -> Unit,
+    onMusicLibrary: () -> Unit = {},
+    onUpdateNow: () -> Unit = {},
+    onChooseLibrary: (String?) -> Unit = {},
+    onCloseLibraries: () -> Unit = {},
 ) {
     val server = ui.server
     val palette = LocalPalette.current
@@ -157,8 +200,16 @@ fun ServerDetailContent(
                 ServerKindIcon(server.kind, size = 22.dp)
                 Text(listOfNotNull(kindTitle(server.kind), ui.detail.version).joinToString(" "), color = palette.muted)
             }
+            if (server.kind != ServerKinds.OWN_AUDIO) {
+                RowDivider()
+                ValueRow(stringResource(AppR.string.talks_through), stringResource(if (server.kind == ServerKinds.JELLYFIN) AppR.string.jellyfin_api else AppR.string.subsonic_api), onClick = null)
+            }
             RowDivider()
             ValueRow(stringResource(R.string.name), server.displayName, onClick = { renaming = true })
+            if (server.kind == ServerKinds.JELLYFIN) {
+                RowDivider()
+                ValueRow(stringResource(AppR.string.music_library_ellipsis), ui.libraryName, onClick = onMusicLibrary)
+            }
         }
 
         Section(header = stringResource(R.string.connection)) {
@@ -176,6 +227,12 @@ fun ServerDetailContent(
                 RowDivider()
             }
             ButtonRow(stringResource(R.string.add_address), onClick = { addingAddress = true }, icon = Icons.Filled.Add)
+        }
+
+        Section(header = stringResource(AppR.string.library_on_this_device), footer = stringResource(AppR.string.catalogue_footer)) {
+            CatalogueRow(ui.catalogue)
+            RowDivider()
+            ButtonRow(stringResource(AppR.string.update_now), onClick = onUpdateNow, enabled = !ui.catalogue.syncing && !ui.catalogue.offline)
         }
 
         Section(header = null) {
@@ -224,6 +281,38 @@ fun ServerDetailContent(
         )
     }
     ui.detail.error?.let { ErrorAlert(it.text(), onDismissError) }
+    ui.detail.libraries?.let { LibraryPicker(it, server.libraryId, onChoose = onChooseLibrary, onDismiss = onCloseLibraries, onRetry = onMusicLibrary) }
+}
+
+/** Music Library (`LibraryPickerView`): All Music Libraries, then each of the server's. */
+@Composable
+fun LibraryPicker(
+    libraries: audio.own.musicplayer.app.Load<List<audio.own.core.servers.ServerLibraryRef>>,
+    chosen: String?,
+    onChoose: (String?) -> Unit,
+    onDismiss: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(AppR.string.music_library)) },
+        text = {
+            when (libraries) {
+                is audio.own.musicplayer.app.Load.Loaded -> Column {
+                    ChoiceRow(stringResource(AppR.string.all_music_libraries), selected = chosen == null) { onChoose(null) }
+                    libraries.value.forEach { library ->
+                        ChoiceRow(library.name, selected = chosen == library.id) { onChoose(library.id) }
+                    }
+                }
+                is audio.own.musicplayer.app.Load.Failed -> Column(verticalArrangement = Arrangement.spacedBy(Tokens.Spacing.sm)) {
+                    Text(libraries.message.text())
+                    TextButton(onClick = onRetry) { Text(stringResource(R.string.try_again)) }
+                }
+                audio.own.musicplayer.app.Load.Loading -> androidx.compose.material3.CircularProgressIndicator()
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.done)) } },
+    )
 }
 
 @Composable

@@ -58,12 +58,22 @@ data class OfflineEdit(
 /** A source that takes what was changed offline in one request rather than one call each. */
 interface BatchedOfflineEdits : MusicSource {
     /**
-     * Sends [edits] in the order made. Returns once the server has answered every one, including
-     * those it refused for good (the song is gone), which are not worth sending again. Throws when
-     * nothing was answered; [SourceError.Unsupported] means they go one call at a time.
+     * Sends [edits] in the order made. Returns once the server has answered every one, with
+     * what it said of each: those it refused for good (the song is gone) are not worth sending
+     * again, and the app undoes them on screen. Throws when nothing was answered;
+     * [SourceError.Unsupported] means they go one call at a time.
      */
-    suspend fun push(edits: List<OfflineEdit>)
+    suspend fun push(edits: List<OfflineEdit>): List<EditResult>
 }
+
+/** What the server said of one offline edit, by its [clientId]. */
+data class EditResult(
+    val clientId: String,
+    /** Taken, or already had (sent twice). */
+    val accepted: Boolean,
+    /** The server's code for a refusal: `not_found`, `invalid_body`, `unsupported_kind`. */
+    val code: String? = null,
+)
 
 /**
  * A source that says when the library changed elsewhere, so the catalogue catches up at once
