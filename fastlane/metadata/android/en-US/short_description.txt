@@ -1,0 +1,1 @@
+Player for your own music server: Navidrome, Jellyfin and own.audio

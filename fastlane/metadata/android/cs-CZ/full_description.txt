@@ -1,0 +1,38 @@
+Nativní přehrávač pro hudbu na vašem vlastním serveru: Navidrome a další servery Subsonic nebo OpenSubsonic (Gonic, Airsonic a jiné), Jellyfin a own.audio.
+
+Hraje tak, jak má hudba hrát
+• Přehrávání bez mezer, takže živá a klasická alba plynou tak, jak byla nahrána, nebo prolínání, chcete-li
+• Bezeztrátový FLAC, s formátem zobrazeným v přehrávači
+• Začne hrát, ještě než skladba celá dorazí
+• Vyrovnání hlasitosti podle hodnot ReplayGain ve vašich souborech nebo podle hlasitosti změřené Jellyfinem
+• Šestipásmový ekvalizér s předvolbami
+• Časovaný text, který sleduje skladbu, pokud ho váš server má
+• Časovač vypnutí
+
+Celá vaše knihovna
+• Interpreti, alba, skladby, žánry, playlisty a hledání
+• Nedávno přidané, nedávno hrané, nejhranější, oblíbené, nejlépe hodnocené
+• Oblíbené skladby, alba a interpreti; hodnocení skladeb a alb, kde server hodnocení uchovává
+• Vytváření a úpravy playlistů
+• Přehrání se hlásí vašemu serveru
+
+Offline
+• Stáhněte si alba, playlisty nebo jednotlivé skladby
+• Celá knihovna v telefonu, k procházení i bez signálu
+• Na mobilních datech originál, menší stream, nebo jen stažené
+
+Doma, venku i v autě
+• Několik serverů najednou
+• Domácí i venkovní adresy serveru: aplikace použije tu, která odpoví, a jen pokud je to tentýž server
+• Android Auto, ovládání v oznámení a na zamčené obrazovce a systémový výběr výstupu
+• Widget Naposledy přehrané a hlasové hledání s Asistentem
+• Telefony a tablety, česky a anglicky
+
+Se serverem own.audio
+• Chytré playlisty, vybírané pokaždé znovu z toho, co posloucháte; sdílené s rodinou, každý dostane svůj výběr
+• Identifikace knihovny podle MusicBrainz: projděte, co navrhne, a cokoli vraťte zpět
+• Knihovna v telefonu se srovná do pár vteřin od změny
+
+Soukromí od základu: aplikace mluví jen se servery, které přidáte, a ve verzi z Google Play s Googlem, pokud se přes něj přihlásíte. Žádný účet u nás, žádná analytika, žádné reklamy. Heslo k Subsonicu zůstává v telefonu zašifrované a posílá se jen jednorázový token z něj vytvořený; Jellyfin a own.audio si nechávají jen token přihlášení.
+
+Zdarma a s otevřeným kódem pod licencí MPL-2.0. Vytvořilo own.audio.

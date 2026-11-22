@@ -1,0 +1,1 @@
+Přehrávač pro váš hudební server: Navidrome, Jellyfin a own.audio

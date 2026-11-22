@@ -1,0 +1,38 @@
+A native player for the music on your own server: Navidrome and other Subsonic or OpenSubsonic servers (Gonic, Airsonic and more), Jellyfin, and own.audio.
+
+Plays the way music should
+• Gapless playback, so live and classical albums flow as recorded, or crossfade if you prefer
+• Lossless FLAC, with the format shown in the player
+• Starts playing while the song is still arriving
+• Volume leveling from your files' ReplayGain values, or Jellyfin's measured loudness
+• Six-band equalizer with presets
+• Synced lyrics that follow the song, where your server has them
+• Sleep timer
+
+Your whole library
+• Artists, albums, songs, genres, playlists and search
+• Recently added, recently played, most played, favorites, highest rated
+• Favorite songs, albums and artists; rate songs and albums where the server keeps ratings
+• Create and edit playlists
+• Plays are reported to your server
+
+Offline
+• Download albums, playlists or single songs
+• Keep the whole library on the phone, to browse it with no signal
+• On mobile data: the original, a smaller stream, or downloads only
+
+At home, away and in the car
+• Several servers at once
+• A server's home and outside addresses: the app uses whichever answers, and only if it is the same server
+• Android Auto, the notification and lock screen controls, and the system's output switcher
+• A Recently Played widget, and voice search with the Assistant
+• Phones and tablets, in English and Czech
+
+With an own.audio server
+• Smart playlists, chosen anew each time from what you have listened to; shared with the family, everyone gets their own selection
+• Identify your library with MusicBrainz, review what it proposes, undo anything
+• The library on the phone catches up within seconds of a change
+
+Private by design: the app talks only to the servers you add, and, in the Google Play version, to Google if you sign in with it. No account with us, no analytics, no ads. A Subsonic password stays encrypted on the phone and only a one-time token made from it is sent; Jellyfin and own.audio keep just a sign-in token.
+
+Free and open source under the MPL-2.0. Made by own.audio.

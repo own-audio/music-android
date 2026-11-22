@@ -5,6 +5,7 @@ All notable changes to own.audio Music for Android. The format follows
 
 ## [Unreleased]
 
+- Release preparation: a release workflow for tags (both flavours' APKs and the Play bundle, signed when the repository has the key), the guide published by GitHub Pages, store texts in English and Czech with the 512 px icon (also F-Droid's layout), the APK size budget per app, and docs/release.md with the maintainer's steps.
 - F9 and M13: a thin scrubber like the iOS app's, TalkBack headings, states and values, layouts that stack at the largest text, a library sidebar and a centred player on tablets, phones upright, keyboard keys; removing a server stops its song; misuse tests. Large libraries browse fast: the catalogue database moves to version 3 (artists, paging and song search use their indexes).
 - The user guide (`guide/`, for GitHub Pages): every screen, with screenshots.
 - F8 and M12: Android Auto (Recently Played, Recently Added, Downloads, Playlists, Artists, Favorites, search), the Recently Played widget, ownmusic:// links (resume, an album, a playlist, the player), the assistant ("play ‹album›", "play my playlist ‹name›", "continue listening") and a Continue Listening shortcut; the hourly refresh also refreshes the widget.
