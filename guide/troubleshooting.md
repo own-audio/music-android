@@ -21,6 +21,9 @@ the phone stay as they are.
 
 - Open the server's page and tap **Check Now**. It says whether the server answers and accepts
   the sign-in, refuses it, or whether no address answers.
+- While the app is on screen it also asks a server that didn't answer again by itself: after 15
+  seconds, then less often, at most every 5 minutes, and at once when you come back to the app
+  or open the server's page. In the background, or while the phone is locked, it doesn't.
 - At home, check the phone is on the same network as the server. Away from home, the server
   needs an address that works from outside, or a VPN such as Tailscale. Add more addresses under
   **Addresses**; see [Servers and family](servers.md#addresses).

@@ -48,6 +48,7 @@ class ServerDetailViewModel(
     val serversState: StateFlow<ServersState> = servers.state
 
     init {
+        servers.aboutToUse(serverId)
         viewModelScope.launch {
             val record = servers.state.value.server(serverId) ?: return@launch
             if (record.kind == ServerKinds.OWN_AUDIO) {

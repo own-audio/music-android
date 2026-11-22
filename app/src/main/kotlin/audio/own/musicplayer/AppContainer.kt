@@ -101,6 +101,9 @@ class AppContainer(context: Context) {
     val preferences: AppPreferences = DataStorePreferences(app)
     val playbackSettings = PlaybackSettingsStore(PlaybackSettingsStore.Shared(app.getSharedPreferences("playback", Context.MODE_PRIVATE)))
     val network = NetworkMonitor(app).also { it.start() }
+
+    /** Whether a screen of the app is started; [OwnAudioApp] keeps it from the process lifecycle. */
+    val foreground = MutableStateFlow(false)
     val offline = OfflineSwitch()
 
     /** [offline] as screens watch it: offline at all, and whether by the listener's choice. */
@@ -141,6 +144,7 @@ class AppContainer(context: Context) {
         acceptLanguage = { appLocale().toLanguageTag() },
         log = log,
         scope = scope,
+        foreground = foreground,
         jellyfinInfo = audio.own.kit.jellyfin.ClientInfo(
             client = ServerDetector.CLIENT_NAME,
             device = device.name,
