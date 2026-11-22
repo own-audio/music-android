@@ -48,6 +48,8 @@ object LibraryRoutes {
     const val DOWNLOADED = "downloaded/{id}"
     const val PLAYLIST = "playlist/{id}"
     const val SMART = "smart/{key}"
+    const val IDENTIFY = "identify"
+    const val IDENTIFY_RUN = "identify-run/{id}"
 
     fun albums(sort: AlbumSort) = "albums/${sort.name}"
     fun album(id: String) = "album/${Uri.encode(id)}"
@@ -56,6 +58,7 @@ object LibraryRoutes {
     fun downloaded(collectionId: String) = "downloaded/${Uri.encode(collectionId)}"
     fun playlist(id: String) = "playlist/${Uri.encode(id)}"
     fun smart(key: String) = "smart/${Uri.encode(key)}"
+    fun identifyRun(id: String) = "identify-run/${Uri.encode(id)}"
 }
 
 /** What the library pages are built from. */
@@ -147,6 +150,24 @@ fun NavGraphBuilder.libraryDestinations(nav: NavHostController, env: LibraryEnv)
     composable(LibraryRoutes.DOWNLOADED) { entry -> DownloadedCollectionRoute(env, entry.arg("id"), back) }
     composable(LibraryRoutes.PLAYLISTS) { PlaylistsRoute(env, nav, back) }
     composable(LibraryRoutes.PLAYLIST) { entry -> PlaylistRoute(env, entry.arg("id"), back) }
+    composable(LibraryRoutes.IDENTIFY) {
+        val source = env.rawSource as? audio.own.music.library.IdentifySource
+        val features by env.library.features.collectAsStateWithLifecycle()
+        val availability = features.identify
+        if (source == null || availability == null) {
+            androidx.compose.runtime.LaunchedEffect(Unit) { back() }
+        } else {
+            audio.own.musicplayer.identify.IdentifyRunsRoute(source, availability, back) { nav.navigate(LibraryRoutes.identifyRun(it)) }
+        }
+    }
+    composable(LibraryRoutes.IDENTIFY_RUN) { entry ->
+        val source = env.rawSource as? audio.own.music.library.IdentifySource
+        if (source == null) {
+            androidx.compose.runtime.LaunchedEffect(Unit) { back() }
+        } else {
+            audio.own.musicplayer.identify.IdentifyRunRoute(source, entry.arg("id"), back, onChanged = { env.library.syncServer(source.serverId, force = true) })
+        }
+    }
     composable(LibraryRoutes.SMART) { entry ->
         val target = env.library.smartTarget(entry.arg("key"))
         if (target == null) {

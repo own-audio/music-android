@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.ManageSearch
 import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.SettingsInputAntenna
 import androidx.compose.material.icons.filled.WifiOff
@@ -78,6 +79,8 @@ data class ServerPageUi(
     val catalogue: CatalogueUi = CatalogueUi(),
     /** The Jellyfin music library shown, or null for all of them. */
     val libraryName: String? = null,
+    /** The server identifies the library with MusicBrainz (own.audio). */
+    val identify: Boolean = false,
 )
 
 /** "Library on This Device": what is kept, when it was read, whether it is being read now. */
@@ -139,6 +142,7 @@ fun ServerDetailContent(
     onUpdateNow: () -> Unit = {},
     onChooseLibrary: (String?) -> Unit = {},
     onCloseLibraries: () -> Unit = {},
+    onIdentify: () -> Unit = {},
 ) {
     val server = ui.server
     val palette = LocalPalette.current
@@ -187,6 +191,12 @@ fun ServerDetailContent(
                 ButtonRow(stringResource(R.string.devices), onClick = onDevices, icon = Icons.Outlined.Devices)
                 RowDivider(start = 56.dp)
                 ButtonRow(stringResource(R.string.listening), onClick = onListening, icon = Icons.AutoMirrored.Outlined.ShowChart)
+            }
+        }
+
+        if (ui.identify) {
+            Section(header = null, footer = stringResource(AppR.string.identify_library_footer)) {
+                ButtonRow(stringResource(AppR.string.identify_library), onClick = onIdentify, icon = Icons.Filled.ManageSearch)
             }
         }
 

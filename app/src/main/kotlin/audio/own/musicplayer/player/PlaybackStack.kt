@@ -109,6 +109,16 @@ class PlaybackStack(
         onError = { log.error("plays", it) },
     )
 
+    /** Concerts: their chapters, resume point and saved position (own.audio). */
+    val concerts = ConcertTracker(
+        sourceOf = sourceOf,
+        isOffline = { offline.isOffline },
+        scope = io,
+        onPlayer = { work -> main.launch { work() } },
+        setChapters = music::setChapters,
+        seek = { id, ms -> if (music.state.value.currentTrack?.id == id) music.player.seekTo(ms) },
+    )
+
     /** The service's session follows the active deck: set by the service while it runs. */
     var onActivePlayerChanged: ((Player) -> Unit)? = null
 
@@ -125,7 +135,10 @@ class PlaybackStack(
                 }
             }
 
-            override fun onProgress(trackId: String, positionMs: Long, isPlaying: Boolean) = reporter.progress(trackId, positionMs, isPlaying)
+            override fun onProgress(trackId: String, positionMs: Long, isPlaying: Boolean) {
+                reporter.progress(trackId, positionMs, isPlaying)
+                concerts.progress(trackId, positionMs)
+            }
 
             override fun onPlaybackError(error: PlaybackException, stopped: Boolean) {
                 log.error("player", "${error.errorCodeName}: ${error.cause?.message ?: error.message}${if (stopped) " (stopped)" else ""}")
@@ -134,6 +147,11 @@ class PlaybackStack(
         }
         main.launch { music.state.collect { if (it.isPlaying) _error.value = null } }
         main.launch { music.state.map { it.currentTrack?.id }.distinctUntilChanged().collect { id -> id?.let(onTrackStarted) } }
+        main.launch {
+            music.state.map { it.currentTrack }.distinctUntilChanged { a, b -> a?.id == b?.id }.collect { track ->
+                if (track != null) concerts.started(track.id, music.player.currentPosition, track.durationSecs?.let { it * 1000L })
+            }
+        }
         // A pause reported "stopped"; playing on is a new start for the server. No track at all: the end.
         main.launch {
             music.state.map { it.currentTrack?.id to it.isPlaying }.distinctUntilChanged().collect { (id, playing) ->

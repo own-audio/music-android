@@ -41,6 +41,7 @@ fun Throwable.userMessage(): UiText = when (this) {
     is SourceError.NotFound -> UiText(R.string.error_not_found)
     is SourceError.Unreadable -> UiText(R.string.error_unreadable)
     is SourceError.Http -> UiText.of(R.string.error_http, status)
+    is SourceError.PaymentRequired -> UiText(audio.own.musicplayer.R.string.identify_no_credit)
     is SourceError -> UiText(R.string.error_generic)
     is OwnAudioException.Offline -> UiText(R.string.error_offline)
     is OwnAudioException.Network -> UiText(R.string.error_network)
@@ -48,6 +49,7 @@ fun Throwable.userMessage(): UiText = when (this) {
     is OwnAudioException.TooOld -> UiText(R.string.error_too_old)
     is OwnAudioException.Decoding -> UiText(R.string.error_unreadable)
     is OwnAudioException.Problem -> when {
+        status == 402 -> UiText(audio.own.musicplayer.R.string.identify_no_credit)
         code == "forbidden" || status == 403 -> UiText(R.string.error_not_allowed)
         status == 404 -> UiText(R.string.error_not_found)
         status == 429 -> UiText(R.string.error_rate_limited)

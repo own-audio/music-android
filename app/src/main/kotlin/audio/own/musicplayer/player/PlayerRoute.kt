@@ -27,6 +27,7 @@ import audio.own.music.library.model.Song
 import audio.own.musicplayer.AppContainer
 import audio.own.musicplayer.R
 import audio.own.musicplayer.app.Load
+import audio.own.musicplayer.app.text
 import audio.own.musicplayer.app.userMessage
 import audio.own.player.music.Track
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,9 +80,22 @@ fun PlayerRoute(container: AppContainer, onClose: () -> Unit, onError: (Throwabl
 
     val starred = remember(track.id, favorites) { container.library.isFavorite(track.id, false) }
     val errorText = error?.let { stringResource(R.string.could_not_play) }
+    val features by container.library.features.collectAsStateWithLifecycle()
+    val offline by container.offlineState.collectAsStateWithLifecycle()
+    val concert by container.playback.concerts.current.collectAsStateWithLifecycle()
+    // The song playing, where it can be identified: on the active server that identifies, and
+    // not known to be someone else's (the server identifies only its owner's songs).
+    val identifiable by androidx.compose.runtime.produceState<Song?>(null, track.id, features.identify, offline.isOffline) {
+        value = null
+        if (features.identify == null || offline.isOffline || audio.own.core.servers.CompositeId.split(track.id)?.first != features.serverId) return@produceState
+        val source = container.sources.sourceOf(track.id) ?: return@produceState
+        val song = runCatching { source.song(track.id) }.getOrNull()
+            ?: Song(id = track.id, title = track.title, artist = track.artist, album = track.album, durationMs = track.durationSecs?.let { it * 1000L })
+        value = song.takeIf(container.ownAudio::mayIdentify)
+    }
     OwnAudioTheme(accent = accent, darkTheme = true) {
         PlayerContent(
-            ui = PlayerUi(state, sleep, errorText, starred, settings.crossfadeEnabled, eq.enabled),
+            ui = PlayerUi(state, sleep, errorText, starred, settings.crossfadeEnabled, eq.enabled, canIdentify = identifiable != null),
             progress = model::progress,
             onClose = onClose,
             onStop = model::stop,
@@ -95,6 +109,8 @@ fun PlayerRoute(container: AppContainer, onClose: () -> Unit, onError: (Throwabl
             onShuffle = model::toggleShuffle,
             onRepeat = model::cycleRepeat,
             onSheet = { sheet = it },
+            onIdentify = { identifiable?.let(container.ownAudio::identify) },
+            onUndoIdentify = { identifiable?.let(container.ownAudio::askUndoIdentify) },
         )
         when (sheet) {
             PlayerSheet.QUEUE -> PlayerSheetFrame(stringResource(R.string.queue), onDismiss = { sheet = null }, fullHeight = true) {
@@ -144,6 +160,54 @@ fun PlayerRoute(container: AppContainer, onClose: () -> Unit, onError: (Throwabl
                     androidx.compose.material3.TextButton(onClick = store::reset, enabled = eq.enabled) { androidx.compose.material3.Text(stringResource(R.string.reset)) }
                 }) {
                     EqualizerBody(container)
+                }
+            }
+            PlayerSheet.CHAPTERS -> {
+                var editing by remember(track.id) { mutableStateOf(false) }
+                val canEdit = concert?.let { it.trackId == track.id && it.canEdit } == true && !offline.isOffline
+                androidx.compose.material3.ModalBottomSheet(
+                    onDismissRequest = { sheet = null },
+                    sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = editing),
+                ) {
+                    if (editing && canEdit) {
+                        val vm = viewModel(key = "chapters-${track.id}") {
+                            ChapterEditorViewModel(state.chapters, position = { model.progress().positionMs }) { chapters ->
+                                container.playback.concerts.save(track.id, chapters)
+                            }
+                        }
+                        val editor by vm.state.collectAsStateWithLifecycle()
+                        LaunchedEffect(editor.saved) { if (editor.saved) sheet = null }
+                        ChapterEditorContent(
+                            editor,
+                            onTitle = vm::setTitle,
+                            onTime = vm::setTime,
+                            onStartHere = vm::startHere,
+                            onDelete = vm::delete,
+                            onAdd = vm::addHere,
+                            onCancel = { editing = false },
+                            onSave = vm::save,
+                        )
+                        editor.problem?.let { problem ->
+                            androidx.compose.material3.AlertDialog(
+                                onDismissRequest = vm::dismissProblem,
+                                title = { androidx.compose.material3.Text(stringResource(R.string.couldnt_save)) },
+                                text = { androidx.compose.material3.Text(problem.text()) },
+                                confirmButton = { androidx.compose.material3.TextButton(onClick = vm::dismissProblem) { androidx.compose.material3.Text(stringResource(audio.own.core.strings.R.string.ok)) } },
+                            )
+                        }
+                    } else {
+                        ConcertSongsContent(
+                            chapters = state.chapters,
+                            currentIndex = state.chapterIndex,
+                            canEdit = canEdit,
+                            onJump = { index ->
+                                state.chapters.getOrNull(index)?.let { model.seekTo((it.startSecs * 1000).toLong()) }
+                                sheet = null
+                            },
+                            onEdit = { editing = true },
+                            onDone = { sheet = null },
+                        )
+                    }
                 }
             }
             null -> Unit

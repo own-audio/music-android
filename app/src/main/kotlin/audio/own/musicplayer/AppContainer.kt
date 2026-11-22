@@ -231,7 +231,17 @@ class AppContainer(context: Context) {
     val playback: PlaybackStack by playbackLazy
 
     val engine: StackEngine by lazy { StackEngine(playback) }
-    val playbackModel: PlaybackModel by lazy { PlaybackModel(engine) }
+    val playbackModel: PlaybackModel by lazy { PlaybackModel(engine) { songs -> playback.concerts.remember(songs) } }
+
+    /** Sharing, pictures and identify of the listener's own songs (own.audio). */
+    val ownAudio = audio.own.musicplayer.library.OwnAudioActions(
+        sourceOf = sources::sourceOf,
+        sourceForServer = sources::source,
+        isOffline = { offline.isOffline },
+        syncServer = { id -> library.syncServer(id, force = true) },
+        forgetCovers = { ids -> audio.own.musicplayer.library.Covers.forget(app, ids) },
+        scope = scope,
+    )
 
     /** The header of a shared log: which app, which system. */
     val logHeader: String get() = "own.music $versionName ($versionCode), Android ${Build.VERSION.RELEASE}, ${Build.MANUFACTURER} ${Build.MODEL}"

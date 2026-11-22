@@ -11,6 +11,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -54,15 +58,16 @@ import audio.own.core.strings.R as SR
 @Composable
 fun AlbumScreen(vm: AlbumViewModel, known: Album?, onBack: () -> Unit, onArtist: (Artist) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
-    AlbumContent(state, known, onBack, onArtist, onRetry = vm::load)
+    AlbumContent(state, known, onBack, onArtist, onRetry = vm::load, onChanged = vm::refresh)
 }
 
 /**
  * An album: cover, title, artist (opens the artist), year, Play / Shuffle, the songs split by
- * disc, and "N songs, M min". Top bar: the star and the ⋯ menu (Play Next, Add to Queue, Rate).
+ * disc, and "N songs, M min". Top bar: the star and the ⋯ menu (Play Next, Add to Queue, Rate,
+ * and on own.audio the cover, sharing and identify of the listener's own songs on it).
  */
 @Composable
-fun AlbumContent(state: Load<AlbumWithSongs>, known: Album?, onBack: () -> Unit, onArtist: (Artist) -> Unit, onRetry: () -> Unit) {
+fun AlbumContent(state: Load<AlbumWithSongs>, known: Album?, onBack: () -> Unit, onArtist: (Artist) -> Unit, onRetry: () -> Unit, onChanged: () -> Unit = {}) {
     val loaded = (state as? Load.Loaded)?.value
     val album = loaded?.album ?: known
     val ui = LocalLibraryUi.current
@@ -105,6 +110,7 @@ fun AlbumContent(state: Load<AlbumWithSongs>, known: Album?, onBack: () -> Unit,
                                 onClick = { menu = false; add(songs.map { it.id }) },
                             )
                         }
+                        OwnAlbumItems(album, songs, onDismiss = { menu = false }, onChanged = onChanged)
                     }
                     if (rating) RatingChoices(ui.rating(album.id, album.rating), onDismiss = { rating = false; menu = false }) { ui.setRating(album.id, it, FavoriteKind.ALBUM) }
                 }
@@ -171,13 +177,88 @@ fun AlbumContent(state: Load<AlbumWithSongs>, known: Album?, onBack: () -> Unit,
     }
 }
 
-/** An artist: picture, name, Play / Shuffle all albums, the album grid; the star in the bar. */
+/**
+ * Choose Album Cover… and Share My Songs (or Stop Sharing My Songs) when some of the album's
+ * songs are the listener's; Identify Album unless every song is known to be someone else's.
+ */
+@Composable
+private fun OwnAlbumItems(album: Album, songs: List<audio.own.music.library.model.Song>, onDismiss: () -> Unit, onChanged: () -> Unit) {
+    val ui = LocalLibraryUi.current
+    val mine = songs.filter(ui::isMine)
+    if (ui.canChoosePictures && mine.isNotEmpty()) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.choose_album_cover)) },
+            leadingIcon = { Icon(Icons.Filled.Image, contentDescription = null) },
+            onClick = { onDismiss(); ui.choosePicture(ArtworkTarget.Album(album, songs), onChanged) },
+        )
+    }
+    if (ui.canShare && mine.isNotEmpty()) {
+        val allShared = mine.all { ui.sharingOf(it) == audio.own.music.library.model.Sharing.SHARED }
+        DropdownMenuItem(
+            text = { Text(stringResource(if (allShared) R.string.stop_sharing_my_songs else R.string.share_my_songs)) },
+            leadingIcon = { Icon(if (allShared) Icons.Filled.Person else Icons.Filled.Group, contentDescription = null) },
+            onClick = { onDismiss(); ui.setAlbumShared(album, songs, !allShared) },
+        )
+    }
+    if (ui.canIdentify && (songs.isEmpty() || songs.any { ui.sharingOf(it)?.isMine != false })) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.identify_album)) },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            onClick = { onDismiss(); ui.identifyAlbum(album) },
+        )
+    }
+}
+
+/**
+ * An artist: picture, name, Play / Shuffle all albums, the album grid; the star in the bar, and
+ * on own.audio a menu with Choose Picture… and Identify Artist.
+ */
 @Composable
 fun ArtistScreen(vm: ArtistViewModel, artist: Artist, onBack: () -> Unit, onAlbum: (Album) -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val starting by vm.starting.collectAsStateWithLifecycle()
+    ArtistContent(state, starting, artist, onBack, onAlbum, onRetry = vm::load, onPlayAll = vm::playAll)
+}
+
+@Composable
+fun ArtistContent(
+    state: Load<List<Album>>,
+    starting: Boolean,
+    known: Artist,
+    onBack: () -> Unit,
+    onAlbum: (Album) -> Unit,
+    onRetry: () -> Unit,
+    onPlayAll: ((List<audio.own.music.library.model.Song>) -> Unit) -> Unit,
+) {
     val ui = LocalLibraryUi.current
-    ListPage(artist.name, onBack, actions = { FavoriteStar(FavoriteKind.ARTIST, artist.id, artist.isFavorite) }) { inner ->
+    // A picture chosen here: drawn from the artist's own id from then on, whatever it had.
+    var pictured by remember { mutableStateOf(false) }
+    val artist = if (pictured) known.copy(coverArt = known.coverArt ?: known.id) else known
+    var menu by remember { mutableStateOf(false) }
+    ListPage(artist.name, onBack, actions = {
+        FavoriteStar(FavoriteKind.ARTIST, artist.id, artist.isFavorite)
+        if (ui.canChoosePictures || ui.canIdentify) {
+            Box {
+                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, contentDescription = stringResource(SR.string.more)) }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    if (ui.canChoosePictures) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.choose_picture)) },
+                            leadingIcon = { Icon(Icons.Filled.Image, contentDescription = null) },
+                            onClick = { menu = false; ui.choosePicture(ArtworkTarget.ArtistPicture(artist)) { pictured = true } },
+                        )
+                    }
+                    if (ui.canIdentify) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.identify_artist)) },
+                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                            onClick = { menu = false; ui.identifyArtist(artist) },
+                        )
+                    }
+                }
+            }
+        }
+    }) { inner ->
         val albums = (state as? Load.Loaded)?.value.orEmpty()
         AlbumGrid(albums, onAlbum, modifier = Modifier.padding(inner), header = {
             fullWidth {
@@ -187,15 +268,15 @@ fun ArtistScreen(vm: ArtistViewModel, artist: Artist, onBack: () -> Unit, onAlbu
                     val container = "artist:${artist.id}"
                     PlayShuffleButtons(
                         enabled = !starting && albums.isNotEmpty(),
-                        onPlay = { vm.playAll { ui.play(it, null, false, container) } },
-                        onShuffle = { vm.playAll { ui.play(it, null, true, container) } },
+                        onPlay = { onPlayAll { ui.play(it, null, false, container) } },
+                        onShuffle = { onPlayAll { ui.play(it, null, true, container) } },
                     )
                 }
             }
             if (state !is Load.Loaded) {
                 fullWidth {
                     Box(Modifier.fillMaxWidth().padding(Tokens.Spacing.xl), contentAlignment = Alignment.Center) {
-                        if (state is Load.Loading) CircularProgressIndicator() else LoadStateView(state.forView(), onRetry = vm::load) {}
+                        if (state is Load.Loading) CircularProgressIndicator() else LoadStateView(state.forView(), onRetry = onRetry) {}
                     }
                 }
             }

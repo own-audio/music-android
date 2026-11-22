@@ -31,6 +31,8 @@ data class ServerDetailState(
     val catalogue: LibraryModel.CatalogueInfo? = null,
     /** The Jellyfin libraries for the picker, while it is open. */
     val libraries: Load<List<ServerLibraryRef>>? = null,
+    /** The server identifies with MusicBrainz: Identify Library is offered. */
+    val identify: Boolean = false,
 )
 
 /** One server's page: its connection, account, name, addresses, and removing it. */
@@ -63,6 +65,16 @@ class ServerDetailViewModel(
                 library.sync.map { (serverId in it.syncing) to it.revision }.distinctUntilChanged().collect { (syncing, _) ->
                     if (!syncing) _state.update { it.copy(catalogue = runCatching { library.catalogueInfo(serverId) }.getOrNull()) }
                 }
+            }
+        }
+    }
+
+    init {
+        val source = library?.source(serverId) as? audio.own.music.library.IdentifySource
+        if (source != null) {
+            viewModelScope.launch {
+                val offered = runCatching { source.identifyAvailability() }.getOrNull() != null
+                _state.update { it.copy(identify = offered) }
             }
         }
     }

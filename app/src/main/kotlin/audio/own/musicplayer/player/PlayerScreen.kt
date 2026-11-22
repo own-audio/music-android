@@ -33,7 +33,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.ManageSearch
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Equalizer
@@ -111,9 +115,11 @@ data class PlayerUi(
     val isFavorite: Boolean = false,
     val crossfadeOn: Boolean = false,
     val equalizerOn: Boolean = false,
+    /** The song playing can be identified (own.audio, the listener's own): the Identify tool. */
+    val canIdentify: Boolean = false,
 )
 
-enum class PlayerSheet { QUEUE, SLEEP, CROSSFADE, LYRICS, EQUALIZER }
+enum class PlayerSheet { QUEUE, SLEEP, CROSSFADE, LYRICS, EQUALIZER, CHAPTERS }
 
 /**
  * The full player, always dark: the cover blurred behind (Android 12+; a dimmed cover below),
@@ -135,6 +141,8 @@ fun PlayerContent(
     onRepeat: () -> Unit,
     onSheet: (PlayerSheet) -> Unit,
     tickMs: Long = 250,
+    onIdentify: () -> Unit = {},
+    onUndoIdentify: () -> Unit = {},
 ) {
     val track = ui.state.currentTrack
     val palette = LocalPalette.current
@@ -173,12 +181,12 @@ fun PlayerContent(
                 ) {
                     Spacer(Modifier.weight(1f))
                     Cover(ui, coverSide, onNext, onPrevious)
-                    Titles(ui, onFavorite)
+                    Titles(ui, onFavorite, onChapters = { onSheet(PlayerSheet.CHAPTERS) })
                     Scrubber(progress, onSeek, tickMs, Modifier.padding(horizontal = Tokens.Spacing.screenEdge))
                     Transport(ui, progress, onToggle, onNext, onPrevious)
                     ui.error?.let { Text(it, color = palette.error, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center) }
                     Spacer(Modifier.weight(1f))
-                    Tools(ui, onShuffle, onRepeat, onSheet)
+                    Tools(ui, onShuffle, onRepeat, onSheet, onIdentify, onUndoIdentify)
                     Spacer(Modifier.height(Tokens.Spacing.md))
                 }
             }
@@ -227,7 +235,7 @@ private fun Cover(ui: PlayerUi, side: androidx.compose.ui.unit.Dp, onNext: () ->
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Titles(ui: PlayerUi, onFavorite: () -> Unit) {
+private fun Titles(ui: PlayerUi, onFavorite: () -> Unit, onChapters: () -> Unit) {
     val state = ui.state
     val track = state.currentTrack
     val chapter = state.chapterIndex?.let { state.chapters.getOrNull(it) }
@@ -262,7 +270,24 @@ private fun Titles(ui: PlayerUi, onFavorite: () -> Unit) {
         }
         val chapterIndex = state.chapterIndex
         if (chapterIndex != null) {
-            Text(stringResource(R.string.song_n_of_m, chapterIndex + 1, state.chapters.size), color = Color.White.copy(alpha = 0.85f), style = MaterialTheme.typography.labelMedium)
+            // The concert's songs: tap for the list.
+            TextButton(
+                onClick = onChapters,
+                modifier = Modifier.padding(top = 2.dp).heightIn(min = Tokens.minTarget),
+            ) {
+                Row(
+                    Modifier.background(Color.White.copy(alpha = 0.15f), CircleShape).padding(horizontal = Tokens.Spacing.md, vertical = Tokens.Spacing.xs),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Tokens.Spacing.xs),
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(16.dp))
+                    Text(
+                        stringResource(R.string.song_n_of_m, chapterIndex + 1, state.chapters.size),
+                        color = Color.White.copy(alpha = 0.85f),
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    )
+                }
+            }
         } else {
             state.position?.let { Text(stringResource(R.string.track_n_of_m, it.current, it.total), color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.labelSmall) }
         }
@@ -349,9 +374,9 @@ private fun Transport(ui: PlayerUi, progress: () -> Progress, onToggle: () -> Un
     }
 }
 
-/** Lyrics, Shuffle, Repeat, Crossfade, EQ, Sleep, Queue, Output; scrolls sideways when narrow. */
+/** Lyrics, Shuffle, Repeat, Crossfade, EQ, Sleep, Queue, Identify, Output; scrolls sideways when narrow. */
 @Composable
-private fun Tools(ui: PlayerUi, onShuffle: () -> Unit, onRepeat: () -> Unit, onSheet: (PlayerSheet) -> Unit) {
+private fun Tools(ui: PlayerUi, onShuffle: () -> Unit, onRepeat: () -> Unit, onSheet: (PlayerSheet) -> Unit, onIdentify: () -> Unit, onUndoIdentify: () -> Unit) {
     val context = LocalContext.current
     val hasTrack = ui.state.currentTrack != null
     val repeat = ui.state.repeatMode
@@ -373,6 +398,25 @@ private fun Tools(ui: PlayerUi, onShuffle: () -> Unit, onRepeat: () -> Unit, onS
         Tool(Icons.Filled.Equalizer, stringResource(R.string.eq), active = ui.equalizerOn) { onSheet(PlayerSheet.EQUALIZER) }
         Tool(Icons.Filled.Bedtime, stringResource(R.string.sleep), active = ui.sleep.isActive) { onSheet(PlayerSheet.SLEEP) }
         Tool(Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.queue), enabled = hasTrack) { onSheet(PlayerSheet.QUEUE) }
+        if (ui.canIdentify) {
+            // The same two actions as a song's menu, for the song playing.
+            var menu by remember { mutableStateOf(false) }
+            Box {
+                Tool(Icons.Filled.ManageSearch, stringResource(R.string.identify)) { menu = true }
+                androidx.compose.material3.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(stringResource(R.string.identify_ellipsis)) },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                        onClick = { menu = false; onIdentify() },
+                    )
+                    androidx.compose.material3.DropdownMenuItem(
+                        text = { Text(stringResource(R.string.undo_identify_ellipsis)) },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null) },
+                        onClick = { menu = false; onUndoIdentify() },
+                    )
+                }
+            }
+        }
         Tool(Icons.Filled.SpeakerGroup, stringResource(R.string.output)) { showOutputSwitcher(context) }
     }
 }

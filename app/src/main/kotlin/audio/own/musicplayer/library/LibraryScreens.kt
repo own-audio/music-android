@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.DownloadForOffline
+import androidx.compose.material.icons.filled.ManageSearch
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Piano
@@ -136,7 +137,7 @@ enum class LibrarySection(val title: Int, val icon: ImageVector, val route: Stri
 
 /** The Library tab's root on phones: a grid of section cards; Downloads in the top bar. */
 @Composable
-fun LibraryContent(concerts: Boolean, onOpen: (String) -> Unit) {
+fun LibraryContent(concerts: Boolean, identify: Boolean = false, onOpen: (String) -> Unit) {
     val palette = LocalPalette.current
     ListPage(
         title = stringResource(R.string.library),
@@ -166,13 +167,31 @@ fun LibraryContent(concerts: Boolean, onOpen: (String) -> Unit) {
                     Text(stringResource(section.title), style = MaterialTheme.typography.titleMedium, color = palette.foreground)
                 }
             }
+            // Under the grid, on servers that identify (own.audio with MusicBrainz).
+            if (identify) {
+                item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = Tokens.minTarget)
+                            .background(palette.backgroundAlt, RoundedCornerShape(AppBrand.radii.card))
+                            .clickable { onOpen(LibraryRoutes.IDENTIFY) }
+                            .padding(Tokens.Spacing.lg),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Tokens.Spacing.md),
+                    ) {
+                        Icon(Icons.Filled.ManageSearch, contentDescription = null, tint = palette.accent)
+                        Text(stringResource(R.string.identify_library), style = MaterialTheme.typography.titleMedium, color = palette.foreground)
+                    }
+                }
+            }
         }
     }
 }
 
 /** Tablets: the sections as a permanent list beside the page (the iPad's split view). */
 @Composable
-fun LibrarySidebar(concerts: Boolean, selected: String?, onOpen: (String) -> Unit, modifier: Modifier = Modifier) {
+fun LibrarySidebar(concerts: Boolean, selected: String?, onOpen: (String) -> Unit, modifier: Modifier = Modifier, identify: Boolean = false) {
     val palette = LocalPalette.current
     Column(modifier.fillMaxSize().background(palette.backgroundAlt).padding(vertical = Tokens.Spacing.md)) {
         Text(
@@ -181,7 +200,8 @@ fun LibrarySidebar(concerts: Boolean, selected: String?, onOpen: (String) -> Uni
             modifier = Modifier.padding(horizontal = Tokens.Spacing.lg, vertical = Tokens.Spacing.md),
         )
         val rows = LibrarySection.available(concerts).map { Triple(it.route, it.icon, it.title) } +
-            Triple(LibraryRoutes.DOWNLOADS, Icons.Filled.DownloadForOffline, R.string.downloads)
+            Triple(LibraryRoutes.DOWNLOADS, Icons.Filled.DownloadForOffline, R.string.downloads) +
+            listOfNotNull(Triple(LibraryRoutes.IDENTIFY, Icons.Filled.ManageSearch, R.string.identify_library).takeIf { identify })
         rows.forEach { (route, icon, title) ->
             val isSelected = route == selected
             Row(

@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.AutoAwesome
@@ -30,6 +31,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.MusicNote
@@ -119,8 +123,31 @@ class LibraryUi(
     val addToPlaylist: ((songIds: List<String>) -> Unit)? = null,
     val removeDownload: (id: String) -> Unit = {},
     val removeCollection: (collectionId: String) -> Unit = {},
+    /** Whose a song is and who hears it, with what was changed here. */
+    val sharingOf: (Song) -> Sharing? = { it.sharing },
+    /** The server keeps a household and there is a network: own songs can be shared. */
+    val canShare: Boolean = false,
+    val setShared: (songs: List<Song>, shared: Boolean) -> Unit = { _, _ -> },
+    /** An album's Share My Songs, by the album: its own songs not loaded yet too. */
+    val setAlbumShared: (album: Album, songs: List<Song>, shared: Boolean) -> Unit = { _, _, _ -> },
+    /** The server takes the listener's own pictures (online). */
+    val canChoosePictures: Boolean = false,
+    /** Opens the photo picker; [onDone] after the picture was saved. */
+    val choosePicture: (target: ArtworkTarget, onDone: () -> Unit) -> Unit = { _, _ -> },
+    /** The server identifies (MusicBrainz) and there is a network. */
+    val canIdentify: Boolean = false,
+    val identifySong: (Song) -> Unit = {},
+    val undoIdentify: (Song) -> Unit = {},
+    val identifyAlbum: (Album) -> Unit = {},
+    val identifyArtist: (Artist) -> Unit = {},
 ) {
     fun isFavorite(song: Song) = isFavorite(song.id, song.isFavorite)
+
+    /** The listener's own song, on a server that keeps owners. */
+    fun isMine(song: Song) = sharingOf(song)?.isMine == true
+
+    /** Identify offers itself on songs not known to be someone else's. */
+    fun mayIdentify(song: Song) = canIdentify && sharingOf(song)?.isMine != false
     fun rating(song: Song) = rating(song.id, song.rating)
 
     /** Offline, a song that isn't downloaded can't play: its row is greyed out. */
@@ -297,7 +324,7 @@ fun SongRow(
             Text(song.title, color = if (isCurrent) palette.accent else palette.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
             song.artist?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = palette.muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
-        if (song.sharing == Sharing.SHARED) {
+        if (ui.sharingOf(song) == Sharing.SHARED) {
             Icon(Icons.Filled.Group, contentDescription = stringResource(SR.string.shared_with_family), tint = palette.muted, modifier = Modifier.size(14.dp))
         }
         if (starred) {
@@ -324,8 +351,8 @@ const val UNAVAILABLE_ALPHA = 0.4f
 
 /**
  * The song's actions: Play Next, Add to Queue, Favorite, Rate, Instant Mix (where the server
- * makes one), Add to Playlist…, Download or Remove Download, then the page's own [extra]. The
- * others of the iOS menu (covers, sharing, Identify) come with the phases that build them.
+ * makes one), Add to Playlist…, on own.audio Choose Cover…, sharing and Identify for the
+ * listener's own, Download or Remove Download, then the page's own [extra].
  */
 @Composable
 fun SongMenu(song: Song, expanded: Boolean, onDismiss: () -> Unit, extra: (@Composable (dismiss: () -> Unit) -> Unit)? = null) {
@@ -350,6 +377,7 @@ fun SongMenu(song: Song, expanded: Boolean, onDismiss: () -> Unit, extra: (@Comp
                 onClick = { onDismiss(); open(listOf(song.id)) },
             )
         }
+        OwnSongItems(song, onDismiss)
         if (ui.isDownloaded(song.id)) {
             DropdownMenuItem(
                 text = { Text(stringResource(SR.string.remove_download)) },
@@ -367,6 +395,43 @@ fun SongMenu(song: Song, expanded: Boolean, onDismiss: () -> Unit, extra: (@Comp
     }
     if (rating) {
         RatingChoices(ui.rating(song), onDismiss = { rating = false; onDismiss() }) { ui.setRating(song.id, it, FavoriteKind.SONG) }
+    }
+}
+
+/**
+ * Choose Cover… and Share with the Family / Stop Sharing for the listener's own song; Identify…
+ * and Undo Identify… where the server identifies. "Private" means not shared: no lock anywhere.
+ */
+@Composable
+private fun OwnSongItems(song: Song, onDismiss: () -> Unit) {
+    val ui = LocalLibraryUi.current
+    val mine = ui.isMine(song)
+    if (ui.canChoosePictures && mine) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.choose_cover)) },
+            leadingIcon = { Icon(Icons.Filled.Image, contentDescription = null) },
+            onClick = { onDismiss(); ui.choosePicture(ArtworkTarget.Songs(listOf(song))) {} },
+        )
+    }
+    if (ui.canShare && mine) {
+        val shared = ui.sharingOf(song) == Sharing.SHARED
+        DropdownMenuItem(
+            text = { Text(stringResource(if (shared) R.string.stop_sharing else R.string.share_with_the_family)) },
+            leadingIcon = { Icon(if (shared) Icons.Filled.Person else Icons.Filled.Group, contentDescription = null) },
+            onClick = { onDismiss(); ui.setShared(listOf(song), !shared) },
+        )
+    }
+    if (ui.mayIdentify(song)) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.identify_ellipsis)) },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            onClick = { onDismiss(); ui.identifySong(song) },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.undo_identify_ellipsis)) },
+            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null) },
+            onClick = { onDismiss(); ui.undoIdentify(song) },
+        )
     }
 }
 

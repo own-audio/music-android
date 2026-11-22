@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -48,6 +49,9 @@ data class CoverRef(val id: String, val sizePx: Int) {
         private val STEPS = listOf(128, 256, 512, 1024)
 
         fun of(id: String, pixels: Int): CoverRef = CoverRef(id, STEPS.firstOrNull { it >= pixels } ?: STEPS.last())
+
+        /** Every cache key a cover can have, one per size step. */
+        fun keys(id: String): List<String> = STEPS.map { CoverRef(id, it).key }
     }
 }
 
@@ -117,6 +121,19 @@ object Covers {
         return result.image.toBitmap()
     }
 
+    /**
+     * A picture changed on the server: its cached copies go, and covers drawn by these ids load
+     * again. An id names a record, so its link now leads to the new picture.
+     */
+    fun forget(context: Context, ids: Collection<String>) {
+        if (ids.isEmpty()) return
+        val loader = coil3.SingletonImageLoader.get(context)
+        val keys = ids.flatMap(CoverRef::keys).toSet()
+        loader.diskCache?.let { disk -> keys.forEach(disk::remove) }
+        loader.memoryCache?.let { memory -> memory.keys.filter { it.key in keys }.forEach(memory::remove) }
+        CoverChanges.bump(ids)
+    }
+
     /** The artwork address of a song's `MediaItem`: names the cover, holds no signed link. */
     fun artworkUri(coverId: String): Uri = Uri.Builder().scheme(SCHEME).authority("cover").appendQueryParameter("id", coverId).build()
 
@@ -125,13 +142,25 @@ object Covers {
     private const val SCHEME = "ownaudio-cover"
 }
 
+/** How often each cover changed here: a new count makes the covers drawn by that id load again. */
+object CoverChanges {
+    private val versions = mutableStateMapOf<String, Int>()
+
+    fun version(id: String): Int = versions[id] ?: 0
+
+    fun bump(ids: Collection<String>) {
+        for (id in ids) versions[id] = version(id) + 1
+    }
+}
+
 /** The Coil request of a cover drawn at [size]: what `CoverArt` takes as its model. */
 @Composable
 fun rememberCover(coverId: String?, size: Dp): Any? {
     if (coverId == null) return null
     val context = LocalContext.current
     val pixels = with(LocalDensity.current) { size.roundToPx() }
-    return remember(coverId, pixels) {
+    val version = CoverChanges.version(coverId)
+    return remember(coverId, pixels, version) {
         ImageRequest.Builder(context).data(CoverRef.of(coverId, pixels)).crossfade(AppBrand.COVER_CROSSFADE_MS).build()
     }
 }

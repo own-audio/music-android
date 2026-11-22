@@ -40,6 +40,8 @@ import audio.own.core.servers.CompositeId
 import audio.own.musicplayer.library.HomeViewModel
 import audio.own.musicplayer.library.AddToPlaylistSheet
 import audio.own.musicplayer.library.AddToPlaylistViewModel
+import audio.own.musicplayer.library.ArtworkTarget
+import audio.own.musicplayer.library.rememberCoverPicker
 import audio.own.musicplayer.library.LibraryContent
 import audio.own.musicplayer.library.LibraryEnv
 import audio.own.musicplayer.library.LibraryRoutes
@@ -158,7 +160,16 @@ private fun ProvideLibraryUi(container: AppContainer, onError: (Throwable) -> Un
     val background = container.scope
     val context = androidx.compose.ui.platform.LocalContext.current.applicationContext
     var adding by remember { mutableStateOf<List<String>?>(null) }
-    val ui = remember(playback.currentTrack?.id, playback.isPlaying, features, favorites, ratings, sync.revision, offline.isOffline, downloadsState) {
+    val own = container.ownAudio
+    val sharingChanges by own.sharingChanges.collectAsStateWithLifecycle()
+    var picking by remember { mutableStateOf<Pair<ArtworkTarget, () -> Unit>?>(null) }
+    val picker = rememberCoverPicker { jpeg ->
+        val (target, done) = picking ?: return@rememberCoverPicker
+        picking = null
+        scope.launch { runCatching { own.setArtwork(target, jpeg) }.onSuccess { done() }.onFailure(onError) }
+    }
+    val activeServer = features.serverId
+    val ui = remember(playback.currentTrack?.id, playback.isPlaying, features, favorites, ratings, sync.revision, offline.isOffline, downloadsState, sharingChanges) {
         val snapshot = downloadsState
         val isDownloaded: (String) -> Boolean = snapshot::isDownloaded
         val noneDownloaded = { onError(UserFacingException(R.string.offline_none_downloaded)) }
@@ -217,6 +228,26 @@ private fun ProvideLibraryUi(container: AppContainer, onError: (Throwable) -> Un
             addToPlaylist = { ids -> adding = ids },
             removeDownload = { id -> background.launch { downloads.remove(id) } },
             removeCollection = { id -> background.launch { downloads.removeCollection(id) } },
+            sharingOf = own::sharing,
+            canShare = activeServer != null && own.canShare(activeServer),
+            setShared = { songs, shared -> scope.launch { runCatching { own.setShared(songs, shared) }.onFailure(onError) } },
+            setAlbumShared = { album, songs, shared -> scope.launch { runCatching { own.setAlbumShared(album.id, songs, shared) }.onFailure(onError) } },
+            canChoosePictures = activeServer != null && own.canChoosePictures(activeServer),
+            choosePicture = { target, done ->
+                picking = target to done
+                picker()
+            },
+            canIdentify = features.identify != null && !offline.isOffline,
+            identifySong = own::identify,
+            undoIdentify = own::askUndoIdentify,
+            identifyAlbum = { album ->
+                val source = activeServer?.let(own::identifySource)
+                if (source != null) own.beginRun(activeServer, source.albumScope(album.id, album.name))
+            },
+            identifyArtist = { artist ->
+                val source = activeServer?.let(own::identifySource)
+                if (source != null) own.beginRun(activeServer, source.artistScope(artist.id, artist.name))
+            },
         )
     }
     CompositionLocalProvider(LocalLibraryUi provides ui) {
@@ -319,6 +350,7 @@ private fun LibraryTab(container: AppContainer, env: LibraryEnv, nav: NavHostCon
                     features.concerts,
                     selected = entry?.destination?.route?.let { route -> sidebarRoute(route, entry?.arguments?.getString("sort")) },
                     onOpen = { route -> nav.navigate(route) { popUpTo(nav.graph.startDestinationId) { inclusive = true } } },
+                    identify = features.identify != null && !container.offline.isOffline,
                 )
             },
         ) {
@@ -326,7 +358,10 @@ private fun LibraryTab(container: AppContainer, env: LibraryEnv, nav: NavHostCon
         }
     } else {
         NavHost(nav, startDestination = "library") {
-            composable("library") { LibraryContent(features.concerts) { nav.navigate(it) } }
+            composable("library") {
+                LaunchedEffect(Unit) { container.library.refreshIdentify() }
+                LibraryContent(features.concerts, identify = features.identify != null && !container.offline.isOffline) { nav.navigate(it) }
+            }
             libraryDestinations(nav, env)
         }
     }

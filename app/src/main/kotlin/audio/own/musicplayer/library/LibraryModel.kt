@@ -166,6 +166,8 @@ class LibraryModel(
         val serverId: String? = null,
         val capabilities: Set<Capability> = emptySet(),
         val concerts: Boolean = false,
+        /** The server's identify (MusicBrainz), once it said it has one. */
+        val identify: audio.own.music.library.IdentifyAvailability? = null,
     )
 
     private val _sync = MutableStateFlow(SyncState())
@@ -340,10 +342,25 @@ class LibraryModel(
     private fun refreshFeatures(serverId: String) {
         val source = registry.source(serverId)
         _features.value = Features(serverId, source?.capabilities.orEmpty(), concerts = false)
+        refreshIdentify()
         if (source !is ConcertSource) return
         scope.launch {
             val concerts = runCatching { source.supportsConcerts() }.getOrDefault(false)
             _features.update { if (it.serverId == serverId) it.copy(concerts = concerts) else it }
+        }
+    }
+
+    /**
+     * Asks the active server whether it identifies, until it answered once (the source keeps the
+     * answer): a server asked while signed out or offline is asked again when a screen shows.
+     */
+    fun refreshIdentify() {
+        val serverId = servers.state.value.activeId ?: return
+        val source = registry.source(serverId) as? audio.own.music.library.IdentifySource ?: return
+        if (_features.value.serverId == serverId && _features.value.identify != null) return
+        scope.launch {
+            val answer = runCatching { source.identifyAvailability() }.getOrNull()
+            _features.update { if (it.serverId == serverId) it.copy(identify = answer) else it }
         }
     }
 

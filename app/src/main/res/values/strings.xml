@@ -312,4 +312,127 @@
         <item quantity="one">%d genre</item>
         <item quantity="other">%d genres</item>
     </plurals>
+    <!-- M10: sharing, covers, concerts -->
+    <string name="share_my_songs">Share My Songs with the Family</string>
+    <string name="stop_sharing_my_songs">Stop Sharing My Songs</string>
+    <string name="choose_album_cover">Choose Album Cover…</string>
+    <string name="choose_picture">Choose Picture…</string>
+    <string name="concert_songs">Songs</string>
+    <string name="edit">Edit</string>
+    <string name="edit_songs">Edit Songs</string>
+    <string name="chapter_time">Time</string>
+    <string name="chapter_song">Song</string>
+    <string name="start_here">Start Here</string>
+    <string name="start_here_footer">The arrow sets a song\'s start to where the player is now.</string>
+    <string name="add_a_song_here">Add a Song Here</string>
+    <string name="couldnt_save">Couldn\'t Save</string>
+    <string name="chapter_not_a_time">“%1$s” is not a time. Write it as 9:26 or 1:02:03.</string>
+    <string name="chapter_unnamed">Every song needs a name.</string>
+    <string name="chapter_same_start">Two songs start at the same time.</string>
+
+    <!-- M11: identify -->
+    <string name="identify_ellipsis">Identify…</string>
+    <string name="undo_identify_ellipsis">Undo Identify…</string>
+    <string name="undo_identify">Undo Identify</string>
+    <string name="undo_identify_question">Put this song back as its file says, with no MusicBrainz match?</string>
+    <string name="not_identified">This song has not been identified.</string>
+    <string name="identify_album">Identify Album</string>
+    <string name="identify_artist">Identify Artist</string>
+    <string name="identify">Identify</string>
+    <string name="identify_library">Identify Library</string>
+    <string name="identify_library_footer">Lets MusicBrainz name your songs and albums on the server. Nothing changes until you accept it, and the files stay as they are.</string>
+    <string name="whole_library">Whole library</string>
+    <string name="selected_songs">Selected songs</string>
+    <string name="identify_whole_library">Identify Whole Library</string>
+    <string name="identify_this_folder">Identify This Folder</string>
+    <string name="identify_runs_footer">Compares your songs with MusicBrainz in the background, then shows what it found: accept the sure matches at once, look at the rest one by one. Your files never change, and a run can be undone. MusicBrainz answers about one album a second, so a large library takes a while.</string>
+    <string name="runs">Runs</string>
+    <string name="run_queued">Queued</string>
+    <string name="run_running">Identifying</string>
+    <string name="run_waiting">Waiting</string>
+    <string name="run_ready">Ready</string>
+    <string name="run_failed">Failed</string>
+    <string name="run_cancelled">Cancelled</string>
+    <string name="run_summary" tools:ignore="PluralsCandidate">%1$d sure · %2$d to review · %3$d not found · %4$d accepted</string>
+    <string name="start">Start</string>
+    <string name="couldnt_start_identifying">Couldn\'t Start Identifying</string>
+    <plurals name="identify_charge">
+        <item quantity="one">%1$d song to identify. This can cost up to %2$s: you pay only for songs MusicBrainz finds, once per song, and correcting them later is free.</item>
+        <item quantity="other">%1$d songs to identify. This can cost up to %2$s: you pay only for songs MusicBrainz finds, once per song, and correcting them later is free.</item>
+    </plurals>
+    <string name="identify_no_credit">There isn\'t enough credit in the family for this.</string>
+    <string name="tab_to_review">To Review</string>
+    <string name="tab_sure">Sure</string>
+    <string name="tab_not_found">Not Found</string>
+    <string name="tab_done">Done</string>
+    <string name="run_waiting_note">MusicBrainz is busy. The run waits and carries on by itself.</string>
+    <plurals name="accept_sure_matches">
+        <item quantity="one">Accept %d Sure Match</item>
+        <item quantity="other">Accept %d Sure Matches</item>
+    </plurals>
+    <plurals name="songs_identified">
+        <item quantity="one">%d song identified</item>
+        <item quantity="other">%d songs identified</item>
+    </plurals>
+    <plurals name="songs_put_back">
+        <item quantity="one">%d song put back</item>
+        <item quantity="other">%d songs put back</item>
+    </plurals>
+    <plurals name="accept_all_songs">
+        <item quantity="one">Accept %d Song</item>
+        <item quantity="other">Accept All %d Songs</item>
+    </plurals>
+    <string name="still_looking">Still looking — more will appear as the run goes on.</string>
+    <string name="nothing_to_review">Nothing to review</string>
+    <string name="no_sure_matches">No sure matches waiting</string>
+    <string name="nothing_unfound">Nothing left unfound</string>
+    <string name="nothing_decided">Nothing accepted or rejected yet</string>
+    <string name="put_back">Put back as it was</string>
+    <string name="undo_run">Undo Run</string>
+    <string name="delete_run">Delete Run</string>
+    <string name="undo_run_question">Put every song this run identified back the way it was?</string>
+    <string name="delete_run_question">Delete this run and its proposals? What you accepted stays.</string>
+    <string name="run_gone">This run is gone</string>
+    <string name="song_identified">Song identified</string>
+    <string name="other_edition">Other Edition…</string>
+    <string name="album_actions">Album Actions</string>
+    <string name="nothing_found">Nothing found</string>
+    <string name="search_ellipsis">Search…</string>
+    <string name="reason_incomplete">Part of the album</string>
+    <string name="reason_partial">Some songs not on it</string>
+    <string name="reason_layout">Different numbering</string>
+    <string name="reason_duplicate">Two files, one track</string>
+    <string name="reason_ambiguous">Another match as good</string>
+    <string name="reason_album_differs">Other album</string>
+    <string name="reason_artist_differs">Other artist</string>
+    <string name="reason_weak">Weak match</string>
+    <string name="reason_not_found">Not found</string>
+    <string name="reason_not_on_release">Not on this edition</string>
+    <string name="reason_chosen">Your choice</string>
+    <string name="keep_it_on">Keep it on “%1$s”</string>
+    <string name="accepted">Accepted</string>
+    <string name="rejected">Rejected</string>
+    <string name="accept">Accept</string>
+    <string name="reject">Reject</string>
+    <string name="other_recording">Other Recording…</string>
+    <string name="album">Album</string>
+    <string name="artist">Artist</string>
+    <string name="title">Title</string>
+    <string name="search_musicbrainz">Search MusicBrainz</string>
+    <string name="editions_footer">Correct the album or artist if the tags name it wrong.</string>
+    <string name="no_single_release">No one release fits all these songs, so each was matched on its own. Pick a release to match the whole album to it.</string>
+    <string name="no_other_editions">No other editions were found.</string>
+    <string name="in_use">In Use</string>
+    <string name="edition_tracks" tools:ignore="PluralsCandidate">%1$d tracks, %2$d matched</string>
+    <string name="search">Search</string>
+    <string name="picker_footer">Correct the words if the tags are wrong — a typo, “Track 02”, the artist in the title.</string>
+    <string name="nothing_found_try">Nothing found. Try fewer or other words.</string>
+    <string name="nothing_found_yet">Nothing found yet.</string>
+    <string name="nothing_on_album">Nothing on “%1$s”: these are from other releases.</string>
+    <string name="recordings">Recordings</string>
+    <string name="recording_link_placeholder" translatable="false">musicbrainz.org/recording/…</string>
+    <string name="use_this_recording">Use This Recording</string>
+    <string name="or_paste_a_link">Or Paste a Link</string>
+    <string name="paste_link_footer">A recording\'s link or ID from musicbrainz.org.</string>
+    <string name="clear">Clear</string>
 </resources>

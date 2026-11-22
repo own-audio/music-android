@@ -85,6 +85,8 @@ private object Routes {
     const val LICENCES = "licences"
     const val PLAYER = "player"
     const val EQUALIZER = "equalizer"
+    const val IDENTIFY = "identify/{id}"
+    const val IDENTIFY_RUN = "identify-run/{id}/{run}"
 }
 
 /**
@@ -107,6 +109,7 @@ fun AppRoot(container: AppContainer, openPlayer: MutableStateFlow<Boolean> = Mut
                 }
             }
             AppNavHost(container, nav, onError = { actionError = it.userMessage() })
+            audio.own.musicplayer.identify.OwnAudioOverlays(container.ownAudio, onError = { actionError = it.userMessage() })
             TwoFactorOverlay(container)
             actionError?.let { ErrorAlert(it.text(), onDismiss = { actionError = null }) }
         }
@@ -246,6 +249,7 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
                         error = sync.failures[id]?.text(),
                         offline = container.offline.isOffline,
                     ),
+                    identify = detail.identify && !container.offline.isOffline,
                     libraryName = record.libraryId?.let { chosen -> record.libraries?.firstOrNull { it.id == chosen }?.name }
                         ?: stringResource(AppR.string.all_music_libraries),
                 ),
@@ -257,6 +261,7 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
                 onFamily = { nav.navigate("family/$id") },
                 onDevices = { nav.navigate("devices/$id") },
                 onListening = { nav.navigate("listening/$id") },
+                onIdentify = { nav.navigate("identify/$id") },
                 onRename = { vm.rename(it) },
                 onConnection = { vm.setConnection(it) },
                 onAddAddress = { vm.addAddress(it) },
@@ -268,6 +273,29 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
                 onChooseLibrary = vm::chooseLibrary,
                 onCloseLibraries = vm::closeLibraries,
             )
+        }
+        composable(Routes.IDENTIFY) { entry ->
+            val id = arg(entry)
+            val source = container.sources.source(id) as? audio.own.music.library.IdentifySource
+            val availability by androidx.compose.runtime.produceState<audio.own.music.library.IdentifyAvailability?>(null, source) {
+                value = source?.let { runCatching { it.identifyAvailability() }.getOrNull() }
+            }
+            val known = availability
+            if (source == null) {
+                LaunchedEffect(Unit) { nav.popBackStack() }
+            } else if (known != null) {
+                audio.own.musicplayer.identify.IdentifyRunsRoute(source, known, back) { run -> nav.navigate("identify-run/$id/${android.net.Uri.encode(run)}") }
+            }
+        }
+        composable(Routes.IDENTIFY_RUN) { entry ->
+            val id = arg(entry)
+            val run = entry.arguments?.getString("run")?.let(android.net.Uri::decode).orEmpty()
+            val source = container.sources.source(id) as? audio.own.music.library.IdentifySource
+            if (source == null) {
+                LaunchedEffect(Unit) { nav.popBackStack() }
+            } else {
+                audio.own.musicplayer.identify.IdentifyRunRoute(source, run, back, onChanged = { container.library.syncServer(id, force = true) })
+            }
         }
         composable(Routes.SIGN_IN_AGAIN) { entry ->
             val id = arg(entry)

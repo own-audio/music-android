@@ -31,13 +31,13 @@ the first of the three apps, so the foundation is written here) and the music ap
 | M7 | Subsonic / OpenSubsonic | ◐ app wired 2026-11-22: Navidrome signed in, 1557 songs read, songs played, play reports; the end-to-end suite is still to write |
 | M8 | Jellyfin | ◐ app wired 2026-11-22: signed in, played, Instant Mix, library picker, Quick Connect code shown; the end-to-end suite is still to write |
 | M9 | Settings | ☐ |
-| M10 | own.audio extras: sharing, covers, concerts | ◐ library side done 2026-11-21; screens next |
-| M11 | Identify (MusicBrainz) | ◐ library side done 2026-11-21 (runs, review, follower timing); screens next |
+| M10 | own.audio extras: sharing, covers, concerts | ◐ screens built 2026-11-22; to try on a writable own.audio account with own songs and a concert |
+| M11 | Identify (MusicBrainz) | ◐ screens built 2026-11-22; a run from start to accept to undo still to try on a real own.audio server |
 | F8 + M12 | Android Auto, widget, deep links, voice, background refresh | ☐ |
 | F9 + M13 | Localization, accessibility, tablets, misuse tests, scale | ☐ |
 | F10 + M14 | Release: Play, F-Droid, guide | ☐ |
 
-**Where we stopped:** 2026-11-22 — Music plays from own.audio, Navidrome/Subsonic and Jellyfin, downloads and plays offline, and has playlists and smart playlists. Next: the M10/M11 screens (sharing, covers, concerts, identify), F8/M12 (Android Auto, widget, voice), F9/M13 polish, the guide pages, the end-to-end suite against each server.
+**Where we stopped:** 2026-11-22 — every M phase up to M11 has its screens. Blocked on a writable own.audio test account for the live checks (sharing, covers, concerts, identify, playlist life cycle, offline favourites). Next: F8/M12 (Android Auto, widget, deep links, voice), F9/M13 polish, the guide, the end-to-end suite.
 
 ## Rules for whoever executes this plan
 

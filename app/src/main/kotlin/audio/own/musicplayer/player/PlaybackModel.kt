@@ -68,7 +68,11 @@ interface PlayerEngine {
 }
 
 /** The screens' side of playback: songs in, the engine's state out. Main thread only. */
-class PlaybackModel(private val engine: PlayerEngine) {
+class PlaybackModel(
+    private val engine: PlayerEngine,
+    /** Songs about to be queued, with what the lists know of them (which are concerts). */
+    private val onQueued: (List<Song>) -> Unit = {},
+) {
     val state: StateFlow<MusicPlayer.State> get() = engine.state
     val sleep: StateFlow<SleepTimer.State> get() = engine.sleep
     val error: StateFlow<PlaybackException?> get() = engine.error
@@ -84,6 +88,7 @@ class PlaybackModel(private val engine: PlayerEngine) {
     fun play(songs: List<Song>, startId: String? = null, shuffle: Boolean = false, containerId: String? = null) {
         if (songs.isEmpty()) return
         engine.clearError()
+        onQueued(songs)
         engine.setQueue(songs.map(::track), startId, shuffle, containerId)
         _firstPlay.tryEmit(Unit)
     }
@@ -92,6 +97,7 @@ class PlaybackModel(private val engine: PlayerEngine) {
     fun enqueue(songs: List<Song>, next: Boolean) {
         if (songs.isEmpty()) return
         if (engine.state.value.currentTrack == null) return play(songs)
+        onQueued(songs)
         val tracks = songs.map(::track)
         if (next) engine.insertNext(tracks) else engine.append(tracks)
     }
