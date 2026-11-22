@@ -117,7 +117,7 @@ class MusicPlayerTest {
         player.append(listOf(Track("t5", "Song 5")))
         player.removeUpcoming(listOf(1))
         player.moveUpcoming(listOf(0), 3)
-        run(exo).untilPendingCommandsAreFullyHandled()
+        run(exo).withTimeoutMs(RUN_TIMEOUT_MS).untilPendingCommandsAreFullyHandled()
 
         assertEquals(0, transitions)
         assertEquals("t1", exo.currentMediaItem?.mediaId)
@@ -132,7 +132,7 @@ class MusicPlayerTest {
     @Test
     fun `shuffle keeps the current song and turning it off restores the list order`() {
         player.setQueue(songs(), startTrackId = "t2")
-        run(exo).untilState(Player.STATE_READY)
+        run(exo).withTimeoutMs(RUN_TIMEOUT_MS).untilState(Player.STATE_READY)
         player.setShuffled(true)
         assertEquals("t2", exo.currentMediaItem?.mediaId)
         assertEquals(listOf("t0", "t1", "t2"), ids().take(3))
@@ -178,8 +178,8 @@ class MusicPlayerTest {
         player.sleepTimer.startUntilEndOfItem()
         idle()
         assertTrue(exo.pauseAtEndOfMediaItems)
-        run(exo).untilPlayWhenReadyIs(false)
-        run(exo).untilPendingCommandsAreFullyHandled()
+        run(exo).withTimeoutMs(RUN_TIMEOUT_MS).untilPlayWhenReadyIs(false)
+        run(exo).withTimeoutMs(RUN_TIMEOUT_MS).untilPendingCommandsAreFullyHandled()
         assertFalse(exo.isPlaying)
         assertEquals(1, exo.currentMediaItemIndex)
         assertEquals(0, exo.currentPosition)
@@ -203,7 +203,7 @@ class MusicPlayerTest {
         val tracks = songs(5)
         files.clear()
         player.setQueue(tracks)
-        repeat(3) { run(exo).ignoringNonFatalErrors().untilPendingCommandsAreFullyHandled(); runCatching { run(exo).untilPlayerError() } }
+        repeat(3) { run(exo).ignoringNonFatalErrors().untilPendingCommandsAreFullyHandled(); runCatching { run(exo).withTimeoutMs(RUN_TIMEOUT_MS).untilPlayerError() } }
         assertEquals(listOf("error stopped=false", "error stopped=false", "error stopped=true"), events.filter { it.startsWith("error") })
         assertEquals(2, exo.currentMediaItemIndex)
     }
@@ -217,12 +217,12 @@ class MusicPlayerTest {
             )
         }
         player.setQueue(tracks)
-        run(exo).untilState(Player.STATE_READY)
+        run(exo).withTimeoutMs(RUN_TIMEOUT_MS).untilState(Player.STATE_READY)
         assertEquals(0.501f, exo.volume, 0.01f)
         assertEquals(-6.0, player.state.value.replayGainDb, 0.01)
 
         player.player.seekToNext()
-        run(exo).untilPendingCommandsAreFullyHandled()
+        run(exo).withTimeoutMs(RUN_TIMEOUT_MS).untilPendingCommandsAreFullyHandled()
         assertEquals(1f, exo.volume)
         assertEquals(3.0, effects.last().second, 0.01)
 
@@ -234,8 +234,8 @@ class MusicPlayerTest {
     fun `ReplayGain from the file's tags when the server has none`() {
         fixture("tone-replaygain.mp3", "rg")
         player.setQueue(listOf(Track("rg", "Tagged")))
-        run(exo).untilState(Player.STATE_READY)
-        run(exo).untilPendingCommandsAreFullyHandled()
+        run(exo).withTimeoutMs(RUN_TIMEOUT_MS).untilState(Player.STATE_READY)
+        run(exo).withTimeoutMs(RUN_TIMEOUT_MS).untilPendingCommandsAreFullyHandled()
         assertEquals(-6.0, player.state.value.replayGainDb, 0.01)
         assertEquals(0.501f, exo.volume, 0.01f)
         assertEquals("MP3", player.state.value.format?.codec)
@@ -246,7 +246,7 @@ class MusicPlayerTest {
         val tracks = songs(3)
         player.setCrossfade(2.0)
         player.setQueue(tracks)
-        run(exo).untilState(Player.STATE_READY)
+        run(exo).withTimeoutMs(RUN_TIMEOUT_MS).untilState(Player.STATE_READY)
 
         player.sleepTimer.startUntilEndOfItem()
         assertFalse(player.beginCrossfade())
@@ -328,7 +328,7 @@ class MusicPlayerTest {
     @Test
     fun `controllers edit the queue through its rules`() {
         player.setQueue(songs(4))
-        run(exo).untilState(Player.STATE_READY)
+        run(exo).withTimeoutMs(RUN_TIMEOUT_MS).untilState(Player.STATE_READY)
         val session = player.player
         session.addMediaItem(1, MediaItem.Builder().setMediaId("t3").build())
         assertEquals(listOf("t0", "t3", "t1", "t2"), ids())
@@ -342,7 +342,7 @@ class MusicPlayerTest {
     @Test
     fun `a play is reported as now playing when a song starts`() {
         player.setQueue(songs(1))
-        run(exo).untilPendingCommandsAreFullyHandled()
+        run(exo).withTimeoutMs(RUN_TIMEOUT_MS).untilPendingCommandsAreFullyHandled()
         advance(exo).untilPosition(0, 500)
         assertEquals(ScrobbleTracker.Event.NowPlaying("t0").toString(), events.first())
     }
@@ -367,3 +367,6 @@ class MusicPlayerTest {
         p.release()
     }
 }
+
+/** Generous: CI's machines are much slower than a laptop, and a test player that stalls fails anyway. */
+private const val RUN_TIMEOUT_MS = 60_000L
