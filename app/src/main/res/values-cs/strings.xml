@@ -452,4 +452,18 @@
     <string name="or_paste_a_link">Nebo vložte odkaz</string>
     <string name="paste_link_footer">Odkaz nebo ID nahrávky z musicbrainz.org.</string>
     <string name="clear">Vymazat</string>
+    <!-- Android Auto, widget, odkazy a asistent (F8) -->
+    <string name="auto_add_server">Přidejte server v telefonu</string>
+    <string name="auto_nothing_here">Zatím tu nic není</string>
+    <string name="favorite_songs">Oblíbené skladby</string>
+    <string name="downloaded_songs">Stažené skladby</string>
+    <string name="continue_listening">Pokračovat v poslechu</string>
+    <string name="nothing_to_continue">Není v čem pokračovat; nejdřív něco pusťte v own.music.</string>
+    <string name="cant_play_now">To teď nejde přehrát.</string>
+    <string name="link_other_server">To je na jiném serveru. Nejdřív se na něj přepněte v Nastavení.</string>
+    <string name="voice_not_found">V knihovně není nic s názvem „%1$s“.</string>
+    <string name="widget_name">Naposledy přehrané</string>
+    <string name="widget_description">Kde jste skončili a alba a playlisty, které hrály naposledy.</string>
+    <string name="widget_nothing_played">Zatím nic nehrálo</string>
+    <string name="widget_continue">Pokračovat · %1$s</string>
 </resources>

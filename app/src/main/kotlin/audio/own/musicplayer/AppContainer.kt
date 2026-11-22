@@ -49,6 +49,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import okhttp3.OkHttpClient
+import androidx.glance.appwidget.updateAll
+import audio.own.music.library.MusicSource
+import audio.own.music.library.model.Song
+import audio.own.musicplayer.auto.CarArtwork
+import audio.own.musicplayer.downloads.OfflineAwareSource
+import audio.own.musicplayer.downloads.OfflineLibrary
+import audio.own.musicplayer.platform.PlayRequests
+import audio.own.musicplayer.widget.RecentlyPlayedWidget
+import audio.own.musicplayer.widget.WidgetStore
+import audio.own.musicplayer.widget.WidgetUpdater
+import audio.own.player.music.Track
+import audio.own.player.music.lastQueueStore
 
 /**
  * Hand-wired dependencies. Android Auto, the assistant and the widget can bind to the media
@@ -193,6 +205,7 @@ class AppContainer(context: Context) {
         network = network.state,
         log = log,
         scope = scope,
+        refreshWidget = { widgets.refreshAlbums() },
     ).also { sync ->
         library.offlineChanges = object : LibraryModel.OfflineChanges {
             override suspend fun favorite(kind: FavoriteKind, id: String, on: Boolean) = sync.recordFavorite(kind, id, on)
@@ -212,7 +225,7 @@ class AppContainer(context: Context) {
      * the first screen.
      */
     private val playbackLazy: Lazy<PlaybackStack> = lazy {
-        PlaybackStack(
+        val stack = PlaybackStack(
             context = app,
             sourceOf = sources::sourceOf,
             bareHttp = bareHttp,
@@ -227,6 +240,8 @@ class AppContainer(context: Context) {
             recordPlay = { id, started, heard -> sync.recordPlay(id, started, heard) },
             onTrackStarted = { id -> if (downloads.isDownloaded(id)) scope.launch { downloads.notePlayed(id) } },
         )
+        scope.launch { stack.music.state.collect { widgetTrack.value = it.currentTrack } }
+        stack
     }
     val playback: PlaybackStack by playbackLazy
 
@@ -243,11 +258,70 @@ class AppContainer(context: Context) {
         scope = scope,
     )
 
+    /**
+     * The active server's source as the library screens read it: offline, the downloads (or the
+     * catalogue on the phone with Whole Library When Offline). For Android Auto, the assistant
+     * and the widget's links.
+     */
+    fun browsingSource(): MusicSource? {
+        val source = library.activeSource ?: return null
+        val offlineLibrary = OfflineLibrary({ downloads.state.value }, source.serverId)
+        return OfflineAwareSource(source, offlineLibrary, { offline.isOffline }, { playbackSettings.current.offlineWholeLibrary })
+    }
+
+    /** Android Auto's row pictures. */
+    val carArtwork = CarArtwork("${app.packageName}.artwork", File(app.cacheDir, "car-artwork"))
+
+    /** The widget's links, the launcher's shortcut and the assistant. Main thread. */
+    val playRequests: PlayRequests by lazy {
+        PlayRequests(
+            serversLoaded = { servers.state.first { it.loaded } },
+            activeServerId = { servers.state.value.activeId },
+            source = ::browsingSource,
+            player = object : PlayRequests.Player {
+                override val hasTrack: Boolean get() = playbackModel.state.value.currentTrack != null
+                override fun resume() {
+                    if (!playbackModel.state.value.isPlaying) playbackModel.togglePlayPause()
+                }
+                override fun play(songs: List<Song>, startId: String?, containerId: String?) = playbackModel.play(songs, startId, false, containerId)
+            },
+            isOffline = { offline.isOffline },
+            isDownloaded = { downloads.state.value.isDownloaded(it) },
+        )
+    }
+
+    /**
+     * The song the widget's first entry follows: the player's once it is built, until then the
+     * last queue's, read from its file so the widget needs no player.
+     */
+    private val widgetTrack = MutableStateFlow<Track?>(null)
+
+    val widgets = WidgetUpdater(
+        store = WidgetStore(RecentlyPlayedWidget.folder(app)),
+        track = widgetTrack,
+        activeServerId = servers.state.map { if (it.loaded) it.activeId else null },
+        source = { library.activeSource },
+        isOffline = { offline.isOffline },
+        jpeg = { coverId -> CarArtwork.smallJpeg(app, coverId, WIDGET_COVER_PX) },
+        redraw = { RecentlyPlayedWidget().updateAll(app) },
+        log = log,
+    )
+
+    fun startWidget() {
+        scope.launch(Dispatchers.IO) {
+            val last = lastQueueStore(File(app.filesDir, "last-queue.json")).read()
+            if (!playbackLazy.isInitialized()) widgetTrack.compareAndSet(null, last?.tracks?.firstOrNull { it.id == last.currentTrackId })
+        }
+        widgets.start(scope)
+    }
+
     /** The header of a shared log: which app, which system. */
     val logHeader: String get() = "own.music $versionName ($versionCode), Android ${Build.VERSION.RELEASE}, ${Build.MANUFACTURER} ${Build.MODEL}"
 
     private fun appLocale(): Locale = AppCompatDelegate.getApplicationLocales()[0] ?: Locale.getDefault()
 }
+
+private const val WIDGET_COVER_PX = 160
 
 /** Offline at all; [byChoice] when Offline Mode or "Downloaded Only" on mobile data made it so. */
 data class OfflineState(val isOffline: Boolean = false, val byChoice: Boolean = false, val offlineMode: Boolean = false)

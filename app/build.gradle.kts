@@ -49,6 +49,7 @@ dependencies {
     implementation(project(":core:downloads"))
     implementation(project(":core:sync"))
     implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.glance.appwidget)
     implementation(libs.kotlinx.serialization.json)
     // CatalogueDatabase is a RoomDatabase: its supertype has to be on the app's classpath.
     implementation(libs.androidx.room.runtime)

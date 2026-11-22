@@ -28,6 +28,7 @@ class OwnAudioApp : Application(), SingletonImageLoader.Factory, Configuration.P
         // What the index doesn't know goes; what waited (killed mid-download) starts again.
         container.scope.launch { container.downloads.reconcile() }
         container.sync.start()
+        container.startWidget()
         PeriodicRefresh.schedule(WorkManager.getInstance(this))
         // Offline Mode, "Downloaded Only" on mobile data, or no network at all.
         container.scope.launch {

@@ -52,6 +52,8 @@ class AppSync(
     private val log: AppLog,
     private val scope: CoroutineScope,
     private val now: () -> Long = System::currentTimeMillis,
+    /** The widget's albums asked for again, from the periodic refresh. */
+    private val refreshWidget: suspend () -> Unit = {},
 ) {
     val outbox = Outbox(OutboxDatabase.open(context), now) { log.info("sync", it) }
 
@@ -131,11 +133,12 @@ class AppSync(
         return report.kept == 0
     }
 
-    /** The periodic job: catalogue, outbox. The widget comes with F8. */
+    /** The periodic job: outbox, catalogue, the widget. */
     private suspend fun backgroundRefresh(): Boolean {
         servers.state.first { it.loaded }
         val flushed = flush()
         val synced = library.syncActiveNow()
+        refreshWidget()
         return flushed && synced
     }
 

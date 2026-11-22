@@ -33,11 +33,11 @@ the first of the three apps, so the foundation is written here) and the music ap
 | M9 | Settings | ☐ |
 | M10 | own.audio extras: sharing, covers, concerts | ◐ screens built 2026-11-22; to try on a writable own.audio account with own songs and a concert |
 | M11 | Identify (MusicBrainz) | ◐ screens built 2026-11-22; a run from start to accept to undo still to try on a real own.audio server |
-| F8 + M12 | Android Auto, widget, deep links, voice, background refresh | ☐ |
+| F8 + M12 | Android Auto, widget, deep links, voice, background refresh | ◐ built 2026-11-22: browse tree, search, voice, links and the widget (both sizes) checked on the emulator; Auto on a head unit still to see |
 | F9 + M13 | Localization, accessibility, tablets, misuse tests, scale | ☐ |
 | F10 + M14 | Release: Play, F-Droid, guide | ☐ |
 
-**Where we stopped:** 2026-11-22 — every M phase up to M11 has its screens. Blocked on a writable own.audio test account for the live checks (sharing, covers, concerts, identify, playlist life cycle, offline favourites). Next: F8/M12 (Android Auto, widget, deep links, voice), F9/M13 polish, the guide, the end-to-end suite.
+**Where we stopped:** F8/M12 built 2026-11-22. Next: F9/M13 polish (accessibility, tablets, misuse tests, scale on a device), the guide, the end-to-end suite, F10/M14 release. Live checks wait for a writable own.audio account.
 
 ## Rules for whoever executes this plan
 

@@ -30,8 +30,26 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- The widget's rows and links from elsewhere: ownmusic://resume, ownmusic://play/album/<id>, ownmusic://player. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="ownmusic" />
+                <data android:host="resume" />
+                <data android:host="play" />
+                <data android:host="player" />
+            </intent-filter>
+            <!-- "Play ‹album› on own.music" from the assistant. -->
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
-        <!-- The media session: notification, lock screen, Bluetooth, and Android Auto from F8. -->
+        <!-- The media session: notification, lock screen, Bluetooth, the assistant and Android Auto. -->
         <service
             android:name=".player.PlaybackService"
             android:exported="true"
@@ -42,6 +60,28 @@
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+        <!-- The home-screen widget "Recently Played". -->
+        <receiver
+            android:name=".widget.RecentlyPlayedWidgetReceiver"
+            android:exported="true"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/recently_played_widget" />
+        </receiver>
+        <!-- Android Auto's row pictures; it serves only covers the browse tree named. -->
+        <provider
+            android:name=".auto.CarArtworkProvider"
+            android:authorities="${applicationId}.artwork"
+            android:exported="true"
+            tools:ignore="ExportedContentProvider" />
+        <!-- Android Auto finds the media service through this. -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
         <!-- Play on a headset button after the app was closed: resumes the last queue. -->
         <receiver
             android:name="androidx.media3.session.MediaButtonReceiver"

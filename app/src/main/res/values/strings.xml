@@ -435,4 +435,18 @@
     <string name="or_paste_a_link">Or Paste a Link</string>
     <string name="paste_link_footer">A recording\'s link or ID from musicbrainz.org.</string>
     <string name="clear">Clear</string>
+    <!-- Android Auto, the widget, links and the assistant (F8) -->
+    <string name="auto_add_server">Add a server on your phone</string>
+    <string name="auto_nothing_here">Nothing here yet</string>
+    <string name="favorite_songs">Favorite Songs</string>
+    <string name="downloaded_songs">Downloaded Songs</string>
+    <string name="continue_listening">Continue Listening</string>
+    <string name="nothing_to_continue">There is nothing to continue; play something in own.music first.</string>
+    <string name="cant_play_now">That can\'t play right now.</string>
+    <string name="link_other_server">That is on another server. Switch to it in Settings first.</string>
+    <string name="voice_not_found">Nothing in your library is called “%1$s”.</string>
+    <string name="widget_name">Recently Played</string>
+    <string name="widget_description">Where you left off, and the albums and playlists you played last.</string>
+    <string name="widget_nothing_played">Nothing played yet</string>
+    <string name="widget_continue">Continue · %1$s</string>
 </resources>

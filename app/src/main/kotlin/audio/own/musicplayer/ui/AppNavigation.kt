@@ -109,6 +109,14 @@ fun AppRoot(container: AppContainer, openPlayer: MutableStateFlow<Boolean> = Mut
                 }
             }
             AppNavHost(container, nav, onError = { actionError = it.userMessage() })
+            // A widget link, the shortcut or the assistant asked for something that can't play.
+            val outside by container.playRequests.message.collectAsState()
+            LaunchedEffect(outside) {
+                outside?.let {
+                    actionError = it
+                    container.playRequests.clearMessage()
+                }
+            }
             audio.own.musicplayer.identify.OwnAudioOverlays(container.ownAudio, onError = { actionError = it.userMessage() })
             TwoFactorOverlay(container)
             actionError?.let { ErrorAlert(it.text(), onDismiss = { actionError = null }) }

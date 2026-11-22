@@ -2,7 +2,11 @@ package audio.own.musicplayer
 
 import androidx.core.content.edit
 import android.Manifest
+import android.app.SearchManager
 import android.content.Context
+import android.provider.MediaStore
+import audio.own.musicplayer.platform.MusicLinks
+import audio.own.musicplayer.platform.VoiceSearch
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -33,7 +37,8 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         notifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
-        readIntent(intent)
+        // After a rotation the same intent comes back; it was handled the first time.
+        if (savedInstanceState == null) readIntent(intent)
         // The media notification needs the permission from Android 13: asked on the first Play, never at launch.
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -78,8 +83,31 @@ class MainActivity : AppCompatActivity() {
         return super.onKeyDown(keyCode, event)
     }
 
+    /**
+     * The notification opens the player; the widget's `ownmusic://` links, the launcher's
+     * Continue Listening and the assistant's "play ‹album›" play what they name, and the player
+     * opens when something does. What can't play is said on the screen.
+     */
     private fun readIntent(intent: Intent?) {
-        if (intent?.getBooleanExtra(EXTRA_OPEN_PLAYER, false) == true) openPlayer.value = true
+        intent ?: return
+        if (intent.getBooleanExtra(EXTRA_OPEN_PLAYER, false)) openPlayer.value = true
+        val requests = container.playRequests
+        when (intent.action) {
+            ACTION_CONTINUE -> lifecycleScope.launch { if (requests.openAndReport(MusicLinks.Link.Resume)) openPlayer.value = true }
+            MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH -> {
+                val query = intent.getStringExtra(SearchManager.QUERY)
+                val focus = when (intent.getStringExtra(MediaStore.EXTRA_MEDIA_FOCUS)) {
+                    MediaStore.Audio.Albums.ENTRY_CONTENT_TYPE -> VoiceSearch.Focus.ALBUM
+                    MediaStore.Audio.Playlists.ENTRY_CONTENT_TYPE -> VoiceSearch.Focus.PLAYLIST
+                    else -> null
+                }
+                lifecycleScope.launch { if (requests.playFromSearchAndReport(query, focus)) openPlayer.value = true }
+            }
+            Intent.ACTION_VIEW -> {
+                val link = intent.data?.let(MusicLinks::parse) ?: return
+                lifecycleScope.launch { if (requests.openAndReport(link)) openPlayer.value = true }
+            }
+        }
     }
 
     private fun askForNotificationsOnce() {
@@ -93,6 +121,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_OPEN_PLAYER = "openPlayer"
+        const val ACTION_CONTINUE = "audio.own.musicplayer.CONTINUE_LISTENING"
         private const val ASKED = "notificationsAsked"
     }
 }
