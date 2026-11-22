@@ -5,6 +5,7 @@ All notable changes to own.audio Music for Android. The format follows
 
 ## [Unreleased]
 
+- The user guide (`guide/`, for GitHub Pages): every screen, with screenshots.
 - F8 and M12: Android Auto (Recently Played, Recently Added, Downloads, Playlists, Artists, Favorites, search), the Recently Played widget, ownmusic:// links (resume, an album, a playlist, the player), the assistant ("play ‹album›", "play my playlist ‹name›", "continue listening") and a Continue Listening shortcut; the hourly refresh also refreshes the widget.
 - Starting a narration can carry an Idempotency-Key (with a multipart boundary made from it), so a retried start never begins a second paid job.
 - M10 and M11: on own.audio, your own songs, albums and artists get Choose Cover / Choose Picture, Share with the Family and Identify; concerts show their songs in the player, and the owner can edit them (names and start times); a concert resumes where you left it. Identify Library: runs over the whole library or a folder, the review by album with sure matches, other editions and other recordings, undo and delete.
