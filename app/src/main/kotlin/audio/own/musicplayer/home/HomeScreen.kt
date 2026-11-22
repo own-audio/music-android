@@ -216,7 +216,7 @@ fun ServerMenu(servers: List<ServerRecord>, activeId: String?, onSelect: (String
             Text(active?.displayName.orEmpty(), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = Tokens.Spacing.xs).width(96.dp))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            servers.forEach { server ->
+            audio.own.musicplayer.servers.ServersState.inOrder(servers).forEach { server ->
                 DropdownMenuItem(
                     text = { Text(server.displayName) },
                     leadingIcon = { ServerKindIcon(server.kind, size = 22.dp) },

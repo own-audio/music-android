@@ -82,7 +82,7 @@ Once a server is added, the app has five tabs along the bottom:
 - **Search**.
 
 While something plays, the mini player sits above the tabs. Settings is the gear at the top
-right of **Home**.
+right of **Home**. Back on another tab's first page goes to **Home**.
 
 ## Several servers
 

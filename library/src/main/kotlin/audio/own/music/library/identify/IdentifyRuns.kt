@@ -83,7 +83,7 @@ class IdentifyRuns(
     /** Servers with library folders (and an account that may see them) offer them; others none. */
     suspend fun loadFolders() {
         _folders.value = try {
-            client.musicFolders()
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { client.musicFolders() }
         } catch (_: OwnAudioException) {
             emptyList()
         }
@@ -305,8 +305,9 @@ internal suspend fun undoTrack(client: OwnAudioClient, trackId: String): Boolean
     false
 }
 
+/** On the IO threads: the own.audio client reads an answer where its call resumes, and screens ask from the main thread. */
 internal suspend fun <T> identifyCall(work: suspend () -> T): T = try {
-    work()
+    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { work() }
 } catch (e: OwnAudioException) {
     throw OwnAudioSource.sourceError(e)
 }

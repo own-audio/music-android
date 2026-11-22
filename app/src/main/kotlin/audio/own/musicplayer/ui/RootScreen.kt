@@ -31,7 +31,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.window.core.layout.WindowSizeClass
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import audio.own.musicplayer.R
 
 /** The five tabs of music-ios, in its order. */
@@ -55,6 +57,9 @@ fun TabsScreen(
     above: @Composable () -> Unit = {},
     content: @Composable (Tab) -> Unit = { Placeholder() },
 ) {
+    // Back on another tab's first page goes Home, as in the other own.audio apps; it used to
+    // leave the app. A tab's own pages come first: their handlers are registered inside it.
+    androidx.activity.compose.BackHandler(enabled = selected != Tab.HOME) { onSelect(Tab.HOME) }
     NavigationSuiteScaffold(
         modifier = modifier,
         navigationSuiteItems = {
@@ -63,7 +68,7 @@ fun TabsScreen(
                     selected = tab == selected,
                     onClick = { onSelect(tab) },
                     icon = { Icon(tab.icon, contentDescription = null) },
-                    label = { Text(stringResource(tab.title)) },
+                    label = { TabLabel(stringResource(tab.title)) },
                 )
             }
         },
@@ -75,6 +80,21 @@ fun TabsScreen(
             Box(Modifier.fillMaxSize().padding(inner).consumeWindowInsets(inner)) { content(selected) }
         }
     }
+}
+
+/**
+ * A tab's name on one line: at large font sizes "Downloads" shrinks to fit its tab instead of
+ * breaking mid-word ("Downl / oads"), as in the Books app; five tabs need a lower floor than its four.
+ */
+@Composable
+internal fun TabLabel(text: String) {
+    val size = androidx.compose.material3.LocalTextStyle.current.fontSize
+    Text(
+        text,
+        maxLines = 1,
+        autoSize = if (size.isSp) androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 6.sp, maxFontSize = size, stepSize = 0.5.sp) else null,
+        modifier = Modifier.testTag("tab.label"),
+    )
 }
 
 @Composable

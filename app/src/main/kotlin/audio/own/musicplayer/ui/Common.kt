@@ -30,7 +30,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.SwipeToDismissBoxState
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,6 +48,26 @@ import androidx.compose.ui.unit.dp
 import audio.own.core.designsystem.theme.LocalPalette
 import audio.own.core.designsystem.theme.Tokens
 import audio.own.core.strings.R
+
+/**
+ * Runs [action] once for each swipe of a row that settles open, then closes the row again. Not
+ * from a `LaunchedEffect` on the box's `currentValue`: a row whose action leaves it in its list
+ * (a removal that asks first, or fails) stayed open at the dismissed value, and in the Podcasts
+ * app such an action ran again and again, writing to the server each time.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SwipeActions(state: SwipeToDismissBoxState, action: (SwipeToDismissBoxValue) -> Unit) {
+    val current = rememberUpdatedState(action)
+    LaunchedEffect(state) {
+        snapshotFlow { state.settledValue }.collect { value ->
+            if (value != SwipeToDismissBoxValue.Settled) {
+                current.value(value)
+                state.reset()
+            }
+        }
+    }
+}
 
 /**
  * A page of the app below the tabs: a top bar with back (or Cancel for a form, as the iOS

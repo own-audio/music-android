@@ -107,6 +107,11 @@ data class ServersState(
 
     fun server(id: String): ServerRecord? = servers.firstOrNull { it.id == id }
 
+    companion object {
+        /** As the iOS app lists them, in Settings and the server menu: own.audio servers first, otherwise as added. */
+        fun inOrder(servers: List<ServerRecord>): List<ServerRecord> = servers.sortedBy { it.kind != ServerKinds.OWN_AUDIO }
+    }
+
     /** The servers that refuse the saved sign-in: their page offers to sign in again. */
     fun isRefused(id: String): Boolean {
         val record = server(id) ?: return false

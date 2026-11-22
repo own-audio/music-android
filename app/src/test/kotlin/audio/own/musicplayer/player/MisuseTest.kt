@@ -115,6 +115,30 @@ class MisuseTest {
 
     private fun until(condition: () -> Boolean) = RobolectricUtil.runMainLooperUntil({ condition() }, RUN_TIMEOUT_MS, clock)
 
+    /**
+     * Found on the emulator: a concert alone in the queue, Next on the player's screen did
+     * nothing. The screen's controller drops Next while the session says there is no next item.
+     */
+    @Test
+    fun `next on a concert alone in the queue goes to its next song, whatever the controller thinks`() {
+        val concert = songs(1)
+        val engine = object : MusicEngine(music, MutableStateFlow(null), {}) {
+            override val player: Player = object : androidx.media3.common.ForwardingPlayer(music.player) {
+                override fun seekToNext() = Unit
+            }
+        }
+        val model = PlaybackModel(engine)
+        model.play(concert, containerId = "album:s|live")
+        music.setChapters(concert[0].id, listOf(audio.own.player.music.TrackChapter("Intro", 0.0), audio.own.player.music.TrackChapter("Second", 4.0)))
+        run(exo).withTimeoutMs(RUN_TIMEOUT_MS).untilState(Player.STATE_READY)
+        idle()
+        assertTrue(model.state.value.hasNext)
+        model.next()
+        idle()
+        assertEquals(4_000L, exo.currentPosition)
+        assertEquals(1, model.state.value.chapterIndex)
+    }
+
     @Test
     fun `next, previous, play-pause and the scrubber hammered - it still plays after, and next greys out at the end`() {
         val songs = songs()

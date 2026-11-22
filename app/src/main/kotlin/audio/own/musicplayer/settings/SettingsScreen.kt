@@ -31,7 +31,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -136,9 +135,11 @@ fun SettingsContent(
     val links = LocalUriHandler.current
     Page(title = stringResource(R.string.settings), onBack = onBack) {
         Section(header = stringResource(R.string.servers), footer = stringResource(AppR.string.servers_footer)) {
-            ui.servers.forEach { server ->
-                ServerRow(server, selected = server.id == ui.activeId, onOpen = { onOpenServer(server.id) }, onRemove = { removing = server })
-                RowDivider(start = 64.dp)
+            audio.own.musicplayer.servers.ServersState.inOrder(ui.servers).forEach { server ->
+                androidx.compose.runtime.key(server.id) {
+                    ServerRow(server, selected = server.id == ui.activeId, onOpen = { onOpenServer(server.id) }, onRemove = { removing = server })
+                    RowDivider(start = 64.dp)
+                }
             }
             ButtonRow(stringResource(R.string.add_a_server), onClick = onAddServer, icon = Icons.Filled.Add, color = MaterialTheme.colorScheme.primary)
         }
@@ -237,12 +238,7 @@ fun SettingsContent(
 private fun ServerRow(server: ServerRecord, selected: Boolean, onOpen: () -> Unit, onRemove: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     val swipe = rememberSwipeToDismissBoxState()
-    LaunchedEffect(swipe.currentValue) {
-        if (swipe.currentValue == SwipeToDismissBoxValue.EndToStart) {
-            onRemove()
-            swipe.reset()
-        }
-    }
+    audio.own.musicplayer.ui.SwipeActions(swipe) { if (it == SwipeToDismissBoxValue.EndToStart) onRemove() }
     val palette = LocalPalette.current
     SwipeToDismissBox(
         state = swipe,

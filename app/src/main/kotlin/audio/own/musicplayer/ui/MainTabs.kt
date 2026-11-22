@@ -71,7 +71,7 @@ fun MainTabs(container: AppContainer, onSettings: () -> Unit, onOpenPlayer: () -
     key(activeId) {
         val source = remember(activeId) { container.library.activeSource }
         var tab by rememberSaveable { mutableStateOf(Tab.HOME) }
-        val navs = Tab.entries.associateWith { rememberNavController() }
+        val navs = rememberTabNavs(isWide())
         ProvideLibraryUi(container, onError) {
             TabsScreen(
                 selected = tab,
@@ -109,6 +109,17 @@ fun MainTabs(container: AppContainer, onSettings: () -> Unit, onOpenPlayer: () -
             }
         }
     }
+}
+
+/**
+ * One page stack per tab. The Library tab's pages differ with the window's width (a sidebar and
+ * Artists first when wide, the section grid when not), so it keeps one stack per width: a
+ * tablet turned, a foldable opened or a window resized used to bring back the other width's
+ * pages into the graph that hasn't got them, and the app crashed.
+ */
+@Composable
+internal fun rememberTabNavs(wide: Boolean): Map<Tab, NavHostController> = Tab.entries.associateWith { tab ->
+    if (tab == Tab.LIBRARY) key(wide) { rememberNavController() } else rememberNavController()
 }
 
 /**

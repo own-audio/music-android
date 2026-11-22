@@ -202,7 +202,7 @@ class OwnAudioSource(
     override suspend fun checkConnection(): ConnectionStatus {
         if (client.tokens?.current == null) return ConnectionStatus.REJECTED
         return try {
-            client.me()
+            withContext(Dispatchers.IO) { client.me() }
             ConnectionStatus.OK
         } catch (e: OwnAudioException) {
             when {
@@ -1010,8 +1010,14 @@ class OwnAudioSource(
     )
 
     /** The server's answer; the catalogue's when offline or the server can't be reached. */
+    /*
+     * The own.audio client reads a response's body where its call resumes. Screens ask from the
+     * main thread, so a larger answer (a search on a big library) was read there and failed with
+     * NetworkOnMainThreadException, shown as "Something went wrong."; every call goes through
+     * these three, on the IO threads.
+     */
     private suspend fun <T> orOffline(online: suspend () -> T, offline: suspend () -> T): T = try {
-        online()
+        withContext(Dispatchers.IO) { online() }
     } catch (e: OwnAudioException) {
         when (e) {
             is OwnAudioException.Offline, is OwnAudioException.Network -> offline()
@@ -1020,13 +1026,13 @@ class OwnAudioSource(
     }
 
     private suspend fun <T> orNull(work: suspend () -> T): T? = try {
-        work()
+        withContext(Dispatchers.IO) { work() }
     } catch (_: OwnAudioException) {
         null
     }
 
     private suspend fun <T> api(work: suspend () -> T): T = try {
-        work()
+        withContext(Dispatchers.IO) { work() }
     } catch (e: OwnAudioException) {
         throw sourceError(e)
     }

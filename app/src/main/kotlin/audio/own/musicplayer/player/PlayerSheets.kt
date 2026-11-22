@@ -176,12 +176,7 @@ private fun QueueRow(track: Track, isCurrent: Boolean, modifier: Modifier = Modi
 @Composable
 private fun UpcomingRow(track: Track, index: Int, count: Int, onJump: () -> Unit, onMove: (Int, Int) -> Unit, onRemove: () -> Unit) {
     val swipe = rememberSwipeToDismissBoxState()
-    LaunchedEffect(swipe.currentValue) {
-        if (swipe.currentValue == SwipeToDismissBoxValue.EndToStart) {
-            onRemove()
-            swipe.reset()
-        }
-    }
+    audio.own.musicplayer.ui.SwipeActions(swipe) { if (it == SwipeToDismissBoxValue.EndToStart) onRemove() }
     var offset by remember { mutableFloatStateOf(0f) }
     var rowHeight by remember { mutableIntStateOf(1) }
     val palette = LocalPalette.current

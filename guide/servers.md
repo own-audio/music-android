@@ -30,7 +30,7 @@ From top to bottom:
   listening history. What others in your family added stays with them. The app asks for your
   password first.
 - **Family**, **Devices** and **Listening** (own.audio). See below.
-- **Server**: the kind of server and its version. For Subsonic and Jellyfin, **Talks Through**
+- **Server**: the kind of server, and on own.audio its version. For Subsonic and Jellyfin, **Talks Through**
   says which API the app uses. Tap **Name** to rename the server.
 - **Music Library…** (Jellyfin): a Jellyfin server can hold several music libraries. Pick one,
   or **All Music Libraries**.

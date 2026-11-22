@@ -476,4 +476,5 @@
     <string name="widget_description">Kde jste skončili a alba a playlisty, které hrály naposledy.</string>
     <string name="widget_nothing_played">Zatím nic nehrálo</string>
     <string name="widget_continue">Pokračovat · %1$s</string>
+    <string name="subsonic_addresses_footer">Servery Subsonic neříkají, jaké mají adresy, proto je přidejte sem; aplikace každou ověří vaším přihlášením.</string>
 </resources>

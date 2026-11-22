@@ -1,0 +1,281 @@
+{
+ "artists": [],
+ "albums": [
+  {
+   "id": "a55f6bb8-d1b8-48ca-a8ad-4e5f1fba707c",
+   "title": "Harmony",
+   "credits": [
+    {
+     "contributor_id": "de2c2c29-86ef-40fb-a519-5bb53d0dbf41",
+     "role": "artist",
+     "position": 0,
+     "join_phrase": ""
+    }
+   ],
+   "release_group_id": "4ce1fa0d-e7c0-4cfd-81aa-de9a36e33c2a",
+   "release_date": null,
+   "country": null,
+   "label": null,
+   "barcode": null,
+   "is_compilation": false,
+   "musicbrainz_release_id": null,
+   "track_count": 6,
+   "duration_ms": 1138000,
+   "disc_count": 1,
+   "image": "https://music.example.com/api/v2/images/2ec30feb-07d6-469e-b9b3-b3db6faac742?s=vc3uwIQZU5PrEeS6S2TQnZUragKQAFu1ups5BruH4Jc",
+   "created_at": "2026-11-22T03:00:20.547363Z"
+  }
+ ],
+ "tracks": [
+  {
+   "id": "962aeb2c-8a51-4c3b-b3f7-8d0013da40ae",
+   "title": "Anthropomystery",
+   "album_id": "a55f6bb8-d1b8-48ca-a8ad-4e5f1fba707c",
+   "recording_id": null,
+   "credits": [
+    {
+     "contributor_id": "c9099a04-1c4d-4001-bf03-df784c0391fa",
+     "role": "artist",
+     "position": 0,
+     "join_phrase": ""
+    }
+   ],
+   "genre_ids": [
+    "d8067daf-cf7d-49b2-9fd6-f0f90ed3b9a0"
+   ],
+   "disc_number": null,
+   "track_number": 4,
+   "duration_ms": 145000,
+   "visibility": "family",
+   "owner_id": "85e92a4c-88d1-4474-ba93-2e916dc7d040",
+   "source": "folder",
+   "content_type": "audio/mpeg",
+   "size_bytes": 3371492,
+   "sha256": "d54fbf3814f36c703fefd82e92812e9b81f05a8b09a62e3a4a8a29bca7fe813c",
+   "image": "https://music.example.com/api/v2/images/2ec30feb-07d6-469e-b9b3-b3db6faac742?s=vc3uwIQZU5PrEeS6S2TQnZUragKQAFu1ups5BruH4Jc",
+   "chapter_count": 0,
+   "created_at": "2026-11-22T03:00:20.874524Z",
+   "updated_at": "2026-11-22T03:00:20.911204Z"
+  },
+  {
+   "id": "5ef14020-a9c5-4d27-802b-da1c2b6452b6",
+   "title": "Blooming Flower",
+   "album_id": "a55f6bb8-d1b8-48ca-a8ad-4e5f1fba707c",
+   "recording_id": null,
+   "credits": [
+    {
+     "contributor_id": "c9099a04-1c4d-4001-bf03-df784c0391fa",
+     "role": "artist",
+     "position": 0,
+     "join_phrase": ""
+    }
+   ],
+   "genre_ids": [
+    "d8067daf-cf7d-49b2-9fd6-f0f90ed3b9a0"
+   ],
+   "disc_number": null,
+   "track_number": 2,
+   "duration_ms": 157000,
+   "visibility": "family",
+   "owner_id": "85e92a4c-88d1-4474-ba93-2e916dc7d040",
+   "source": "folder",
+   "content_type": "audio/mpeg",
+   "size_bytes": 3242770,
+   "sha256": "1e68824c4cfec3db9affb86a74817316826e513ced7cb1a6f75fb25292c322b0",
+   "image": "https://music.example.com/api/v2/images/2ec30feb-07d6-469e-b9b3-b3db6faac742?s=vc3uwIQZU5PrEeS6S2TQnZUragKQAFu1ups5BruH4Jc",
+   "chapter_count": 0,
+   "created_at": "2026-11-22T03:00:20.662257Z",
+   "updated_at": "2026-11-22T03:00:20.702180Z"
+  },
+  {
+   "id": "245f4fef-3ca3-4bcf-a88f-8a1f25d0aa22",
+   "title": "Bunny Needs a Shave",
+   "album_id": "a55f6bb8-d1b8-48ca-a8ad-4e5f1fba707c",
+   "recording_id": null,
+   "credits": [
+    {
+     "contributor_id": "c9099a04-1c4d-4001-bf03-df784c0391fa",
+     "role": "artist",
+     "position": 0,
+     "join_phrase": ""
+    }
+   ],
+   "genre_ids": [
+    "d8067daf-cf7d-49b2-9fd6-f0f90ed3b9a0"
+   ],
+   "disc_number": null,
+   "track_number": 6,
+   "duration_ms": 185000,
+   "visibility": "family",
+   "owner_id": "85e92a4c-88d1-4474-ba93-2e916dc7d040",
+   "source": "folder",
+   "content_type": "audio/mpeg",
+   "size_bytes": 4276302,
+   "sha256": "088ea29556790d9a01cdbf37c28b43b96f1ec5f5f031cae59a0b1e25fc3dc687",
+   "image": "https://music.example.com/api/v2/images/2ec30feb-07d6-469e-b9b3-b3db6faac742?s=vc3uwIQZU5PrEeS6S2TQnZUragKQAFu1ups5BruH4Jc",
+   "chapter_count": 0,
+   "created_at": "2026-11-22T03:00:21.070118Z",
+   "updated_at": "2026-11-22T03:00:21.104892Z"
+  },
+  {
+   "id": "e2cd4ba3-1da6-4c74-a0a0-b5e6dea04ab3",
+   "title": "Cave",
+   "album_id": "a55f6bb8-d1b8-48ca-a8ad-4e5f1fba707c",
+   "recording_id": null,
+   "credits": [
+    {
+     "contributor_id": "8bc2cd9d-78fa-499d-8b2e-55461a38d0a6",
+     "role": "artist",
+     "position": 0,
+     "join_phrase": ""
+    }
+   ],
+   "genre_ids": [
+    "d8067daf-cf7d-49b2-9fd6-f0f90ed3b9a0"
+   ],
+   "disc_number": null,
+   "track_number": 3,
+   "duration_ms": 162000,
+   "visibility": "family",
+   "owner_id": "85e92a4c-88d1-4474-ba93-2e916dc7d040",
+   "source": "folder",
+   "content_type": "audio/mpeg",
+   "size_bytes": 3925813,
+   "sha256": "5bee3d7c839c02dfda0428979c3ff373f61af0b2c7e002c90a4b72a754391fa0",
+   "image": "https://music.example.com/api/v2/images/2ec30feb-07d6-469e-b9b3-b3db6faac742?s=vc3uwIQZU5PrEeS6S2TQnZUragKQAFu1ups5BruH4Jc",
+   "chapter_count": 0,
+   "created_at": "2026-11-22T03:00:20.770394Z",
+   "updated_at": "2026-11-22T03:00:20.805909Z"
+  },
+  {
+   "id": "b4f472dc-76b5-444f-a575-6d54748a574e",
+   "title": "Face",
+   "album_id": "a55f6bb8-d1b8-48ca-a8ad-4e5f1fba707c",
+   "recording_id": null,
+   "credits": [
+    {
+     "contributor_id": "8bc2cd9d-78fa-499d-8b2e-55461a38d0a6",
+     "role": "artist",
+     "position": 0,
+     "join_phrase": ""
+    }
+   ],
+   "genre_ids": [
+    "d8067daf-cf7d-49b2-9fd6-f0f90ed3b9a0"
+   ],
+   "disc_number": null,
+   "track_number": 1,
+   "duration_ms": 201000,
+   "visibility": "family",
+   "owner_id": "85e92a4c-88d1-4474-ba93-2e916dc7d040",
+   "source": "folder",
+   "content_type": "audio/mpeg",
+   "size_bytes": 4570493,
+   "sha256": "437ac9363133c9e1e892e65a186fd1337fed026b57305e869ec6e0d9600c4964",
+   "image": "https://music.example.com/api/v2/images/2ec30feb-07d6-469e-b9b3-b3db6faac742?s=vc3uwIQZU5PrEeS6S2TQnZUragKQAFu1ups5BruH4Jc",
+   "chapter_count": 0,
+   "created_at": "2026-11-22T03:00:20.547363Z",
+   "updated_at": "2026-11-22T03:00:20.598792Z"
+  },
+  {
+   "id": "b697adef-cc2b-4c5a-a5c2-addb97c234a3",
+   "title": "Feather",
+   "album_id": "a55f6bb8-d1b8-48ca-a8ad-4e5f1fba707c",
+   "recording_id": null,
+   "credits": [
+    {
+     "contributor_id": "8bc2cd9d-78fa-499d-8b2e-55461a38d0a6",
+     "role": "artist",
+     "position": 0,
+     "join_phrase": ""
+    }
+   ],
+   "genre_ids": [
+    "d8067daf-cf7d-49b2-9fd6-f0f90ed3b9a0"
+   ],
+   "disc_number": null,
+   "track_number": 5,
+   "duration_ms": 288000,
+   "visibility": "family",
+   "owner_id": "85e92a4c-88d1-4474-ba93-2e916dc7d040",
+   "source": "folder",
+   "content_type": "audio/mpeg",
+   "size_bytes": 6440375,
+   "sha256": "fb8ce06358353129c4b167d6fd5c43f5aa0ded9c5564af54a83663f3b091eaf6",
+   "image": "https://music.example.com/api/v2/images/2ec30feb-07d6-469e-b9b3-b3db6faac742?s=vc3uwIQZU5PrEeS6S2TQnZUragKQAFu1ups5BruH4Jc",
+   "chapter_count": 0,
+   "created_at": "2026-11-22T03:00:20.973052Z",
+   "updated_at": "2026-11-22T03:00:21.007456Z"
+  }
+ ],
+ "books": [],
+ "podcasts": [],
+ "episodes": [],
+ "contributors": [],
+ "included": {
+  "contributors": [
+   {
+    "id": "8bc2cd9d-78fa-499d-8b2e-55461a38d0a6",
+    "name": "Gurdonark",
+    "sort_name": null,
+    "kind": "unknown",
+    "musicbrainz_artist_id": null,
+    "image": "https://music.example.com/api/v2/images/6afb7453-eb8c-49c8-9fa8-74a50cd9b44c?s=6_u8IfitngJDOTdfdmCWmS1WZkRZL3vX-XVgIxvXADg",
+    "image_credit": null,
+    "bio": null
+   },
+   {
+    "id": "de2c2c29-86ef-40fb-a519-5bb53d0dbf41",
+    "name": "Gurdonark and Lee Rosevere",
+    "sort_name": null,
+    "kind": "unknown",
+    "musicbrainz_artist_id": null,
+    "image": "https://music.example.com/api/v2/images/8aebbefa-7c3d-4183-a972-bead8cd906d9?s=TXasxyD-gjLIrJHqmbjFuiXA0ttePwVhg0lUsmbVorc",
+    "image_credit": null,
+    "bio": null
+   },
+   {
+    "id": "c9099a04-1c4d-4001-bf03-df784c0391fa",
+    "name": "Lee Rosevere",
+    "sort_name": null,
+    "kind": "unknown",
+    "musicbrainz_artist_id": null,
+    "image": "https://music.example.com/api/v2/images/c2b26365-27ca-4acc-9f8a-7f79f61f278d?s=4VgOl2XpiaGJch5fqxAscpSMrT7soExJbJD4zSXN0DE",
+    "image_credit": null,
+    "bio": null
+   }
+  ],
+  "albums": [
+   {
+    "id": "a55f6bb8-d1b8-48ca-a8ad-4e5f1fba707c",
+    "title": "Harmony",
+    "credits": [
+     {
+      "contributor_id": "de2c2c29-86ef-40fb-a519-5bb53d0dbf41",
+      "role": "artist",
+      "position": 0,
+      "join_phrase": ""
+     }
+    ],
+    "release_group_id": "4ce1fa0d-e7c0-4cfd-81aa-de9a36e33c2a",
+    "release_date": null,
+    "country": null,
+    "label": null,
+    "barcode": null,
+    "is_compilation": false,
+    "musicbrainz_release_id": null,
+    "track_count": 6,
+    "duration_ms": 1138000,
+    "disc_count": 1,
+    "image": "https://music.example.com/api/v2/images/2ec30feb-07d6-469e-b9b3-b3db6faac742?s=vc3uwIQZU5PrEeS6S2TQnZUragKQAFu1ups5BruH4Jc",
+    "created_at": "2026-11-22T03:00:20.547363Z"
+   }
+  ],
+  "genres": [
+   {
+    "id": "d8067daf-cf7d-49b2-9fd6-f0f90ed3b9a0",
+    "name": "Ambient"
+   }
+  ]
+ }
+}

@@ -183,8 +183,14 @@ open class MusicEngine(
     override fun append(tracks: List<Track>) = music.append(tracks)
     override fun play() = player.play()
     override fun pause() = player.pause()
-    override fun next() = player.seekToNext()
-    override fun previous() = player.seekToPrevious()
+    /*
+     * Straight to the engine, not through [player]: the screen's controller sends Next only
+     * while the session says there is a next item, and a concert alone in the queue has its
+     * next song inside the one item, so Next on the player's screen did nothing there. The
+     * engine applies the same rules the session's player does.
+     */
+    override fun next() = music.skipToNext()
+    override fun previous() = music.skipToPrevious()
     override fun seekTo(positionMs: Long) = player.seekTo(positionMs)
     override fun stop() = music.stop()
     override fun setShuffled(on: Boolean) = music.setShuffled(on)

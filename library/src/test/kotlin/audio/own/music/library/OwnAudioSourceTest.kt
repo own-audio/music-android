@@ -5,6 +5,9 @@ import audio.own.music.library.db.CatalogueDatabase
 import audio.own.music.library.model.PlaylistEntry
 import audio.own.music.library.ownaudio.OwnAudioSource
 import java.time.Instant
+import kotlinx.coroutines.asCoroutineDispatcher
+import okhttp3.ResponseBody.Companion.asResponseBody
+import okio.buffer
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -79,6 +82,46 @@ class OwnAudioSourceTest {
             assertEquals(listOf("Gurdonark", "Gurdonark and Lee Rosevere"), result.artists.map { it.name })
             assertEquals("artists,albums,tracks", stub.requests.last().url.queryParameter("types"))
         }
+    }
+
+    /** A test server's answer to "harmo", recorded: an album and its six songs, no catalogue on the phone yet. */
+    @Test fun `search - a recorded answer with nothing in the catalogue`() = runBlocking<Unit> {
+        val (stub, src) = stub { if (it.url.encodedPath == "/api/v2/search") json(answer("search_harmony")) else null }
+        stub.use {
+            val result = src.search("harmo")
+            assertEquals(listOf("Harmony"), result.albums.map { it.name })
+            assertEquals("Gurdonark and Lee Rosevere", result.albums.single().artist)
+            assertEquals(6, result.songs.size)
+        }
+    }
+
+    /**
+     * Found on the emulator: a search on a test server failed with "Something went wrong." The
+     * client reads an answer's body where its call resumes, and the screen asks from the main
+     * thread; a larger answer was then read there (NetworkOnMainThreadException).
+     */
+    @Test fun `an answer is never read on the thread that asked`() = runBlocking<Unit> {
+        val readOn = java.util.concurrent.CopyOnWriteArraySet<String>()
+        val http = okhttp3.OkHttpClient.Builder().addNetworkInterceptor { chain ->
+            val response = chain.proceed(chain.request())
+            val body = response.body
+            val watched = object : okio.ForwardingSource(body.source()) {
+                override fun read(sink: okio.Buffer, byteCount: Long): Long {
+                    readOn += Thread.currentThread().name
+                    return super.read(sink, byteCount)
+                }
+            }
+            response.newBuilder().body(watched.buffer().asResponseBody(body.contentType(), body.contentLength())).build()
+        }.build()
+        val stub = StubServer { if (it.url.encodedPath == "/api/v2/search") json(answer("search_harmony")) else notFound() }
+        val src = OwnAudioSource(SERVER, "me@example.com", stub.client(http = http), db)
+        val caller = java.util.concurrent.Executors.newSingleThreadExecutor { Thread(it, "screen-thread") }
+        stub.use {
+            val result = kotlinx.coroutines.withContext(caller.asCoroutineDispatcher()) { src.search("harmo") }
+            assertEquals(6, result.songs.size)
+        }
+        caller.shutdown()
+        assertTrue("read on $readOn", readOn.isNotEmpty() && readOn.none { it.startsWith("screen-thread") })
     }
 
     @Test fun `offline, search and random songs come from the catalogue, nothing is asked`() = runBlocking<Unit> {

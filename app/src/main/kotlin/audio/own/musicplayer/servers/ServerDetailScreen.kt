@@ -167,7 +167,7 @@ fun ServerDetailContent(
             }
         }
 
-        Section(header = null, footer = stringResource(R.string.server_identity_footer)) {
+        Section(header = null, footer = stringResource(if (server.kind == ServerKinds.SUBSONIC) AppR.string.subsonic_addresses_footer else R.string.server_identity_footer)) {
             StatusRow(server, ui.connection)
             RowDivider()
             ButtonRow(stringResource(R.string.check_now), onClick = onCheckNow, working = ui.checking, enabled = !ui.checking)

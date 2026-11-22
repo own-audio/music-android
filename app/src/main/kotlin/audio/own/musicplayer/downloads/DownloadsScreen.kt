@@ -35,7 +35,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -217,9 +216,7 @@ private fun Header(text: String) {
 @Composable
 private fun Removable(onRemove: () -> Unit, content: @Composable () -> Unit) {
     val state = rememberSwipeToDismissBoxState()
-    LaunchedEffect(state.currentValue) {
-        if (state.currentValue == SwipeToDismissBoxValue.EndToStart) onRemove()
-    }
+    audio.own.musicplayer.ui.SwipeActions(state) { if (it == SwipeToDismissBoxValue.EndToStart) onRemove() }
     SwipeToDismissBox(
         state = state,
         enableDismissFromStartToEnd = false,

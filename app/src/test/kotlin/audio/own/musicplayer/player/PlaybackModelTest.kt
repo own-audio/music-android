@@ -154,6 +154,14 @@ class PlaybackSettingsTest {
         assertEquals(128, PlaybackSettings(mobileData = MobileData.SAVER, saverKbps = 320).maxBitrateKbps(saving))
     }
 
+    /** Found on the emulator: a fresh install streamed originals on mobile data; the guide and iOS say Saver at 192 kbps. */
+    @Test
+    fun aFreshInstallUsesSaverOnMobileData() {
+        val fresh = PlaybackSettingsStore(PlaybackSettingsStore.Memory()).current
+        assertEquals(MobileData.SAVER, fresh.mobileData)
+        assertEquals(192, fresh.maxBitrateKbps(cellular))
+    }
+
     @Test
     fun settingsSurviveARelaunch() {
         val memory = PlaybackSettingsStore.Memory()

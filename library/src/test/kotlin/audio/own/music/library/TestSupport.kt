@@ -31,9 +31,9 @@ class StubServer(private val answer: (RecordedRequest) -> MockResponse) : AutoCl
         server.start()
     }
 
-    fun client(signedIn: Boolean = true, isOffline: () -> Boolean = { false }) = OwnAudioClient(
+    fun client(signedIn: Boolean = true, isOffline: () -> Boolean = { false }, http: OkHttpClient = OkHttpClient()) = OwnAudioClient(
         baseUrl = server.url("/").toString(),
-        http = OkHttpClient(),
+        http = http,
         userAgent = "own.audio Music/1.0 (Android 16; Test)",
         tokens = TokenSession(if (signedIn) Tokens("a", "r", Instant.now().plusSeconds(3600)) else null),
         isOffline = isOffline,

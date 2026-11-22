@@ -32,7 +32,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -140,9 +139,7 @@ fun ChapterEditorContent(
         LazyColumn(Modifier.fillMaxWidth()) {
             itemsIndexed(state.rows, key = { _, row -> row.key }) { _, row ->
                 val swipe = rememberSwipeToDismissBoxState()
-                LaunchedEffect(swipe.currentValue) {
-                    if (swipe.currentValue == SwipeToDismissBoxValue.EndToStart) onDelete(row.key)
-                }
+                audio.own.musicplayer.ui.SwipeActions(swipe) { if (it == SwipeToDismissBoxValue.EndToStart) onDelete(row.key) }
                 SwipeToDismissBox(
                     state = swipe,
                     enableDismissFromStartToEnd = false,

@@ -18,7 +18,7 @@ import kotlinx.serialization.json.Json
  * crossfade, volume leveling, plays.
  */
 data class PlaybackSettings(
-    val mobileData: MobileData = MobileData.ORIGINAL,
+    val mobileData: MobileData = MobileData.SAVER,
     val saverKbps: Int = DEFAULT_SAVER_KBPS,
     val offlineMode: Boolean = false,
     val crossfadeEnabled: Boolean = false,
