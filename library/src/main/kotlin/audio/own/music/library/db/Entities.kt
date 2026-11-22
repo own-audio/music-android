@@ -3,7 +3,10 @@ package audio.own.music.library.db
 import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
+import androidx.room.Fts4
+import androidx.room.FtsOptions
 import androidx.room.Index
+import androidx.room.PrimaryKey
 
 // The catalogue on the phone: every server's library in one database, each row keyed by the
 // server record's id and the item's own id (not the composite one: 600k rows × a repeated
@@ -107,6 +110,23 @@ data class TrackRow(
     val trackPeak: Double? = null,
     val albumPeak: Double? = null,
 )
+
+/**
+ * The songs' words, for offline search (version 4): the track table's title, artist line and
+ * album title, kept in step with it by the triggers Room makes for an external-content table.
+ * unicode61 folds case and accents, so "dvorak" finds "Dvořák".
+ */
+@Fts4(contentEntity = TrackRow::class, tokenizer = FtsOptions.TOKENIZER_UNICODE61)
+@Entity(tableName = "track_fts")
+data class TrackFtsRow(val title: String, val artistLine: String?, val albumTitle: String?)
+
+/**
+ * An index or trigger dropped while a first snapshot writes, with the statement that makes it
+ * again (version 4). Kept in the database so a snapshot cut off by the app being killed still
+ * gets them back: on the next open, or before a migration that checks them.
+ */
+@Entity(tableName = "deferred_schema")
+data class DeferredSchemaRow(@PrimaryKey val name: String, val sql: String)
 
 @Entity(tableName = "genre", primaryKeys = ["serverId", "id"], indices = [Index("serverId", "name")])
 data class GenreRow(

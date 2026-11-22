@@ -19,6 +19,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import audio.own.musicplayer.R as AppR
 
 class ServersModelTest {
     private val fake = FakeOwnAudio()
@@ -158,10 +159,67 @@ class ServersModelTest {
         assertEquals(1, harness.store.loadAll().size)
     }
 
+    /** The server answers as [email] from now on: another user on it. */
+    private fun answerAs(email: String, id: String) {
+        val me = FakeOwnAudio.ME.replace("a@example.com", email).replace("\"u1\"", "\"$id\"")
+        fake.extra = { if (it.url.encodedPath == "/api/v2/me" && it.method == "GET") FakeOwnAudio.json(me) else null }
+    }
+
+    /** A copy to search: the server adds to its list from its own thread meanwhile. */
+    private fun paths() = synchronized(fake.requests) { fake.requests.toList() }.map { "${it.method} ${it.url.encodedPath}" }
+
+    private fun tokenRequests() = paths().count { it == "POST /api/v2/auth/token" }
+
+    @Test
+    fun anOwnAudioAccountAddedAgainIsRefusedBeforeSigningIn() = runBlocking {
+        model.signIn(fake.url, "a@example.com", fake.password, "Mine")
+        expectMessage(AppR.string.error_already_added) { model.signIn(fake.url + "/", " A@Example.com ", fake.password, "Again") }
+        assertEquals(1, tokenRequests())
+        assertEquals(listOf("Mine"), harness.store.loadAll().map { it.displayName })
+    }
+
+    @Test
+    fun theSameAccountThroughGoogleIsRefusedAndItsNewSessionEnded() = runBlocking {
+        model.signIn(fake.url, "a@example.com", fake.password, "")
+        expectMessage(AppR.string.error_already_added) { model.signInWithGoogle(fake.url, "good-id-token", "") }
+        assertEquals(1, harness.store.loadAll().size)
+        eventually { paths().contains("POST /api/v2/auth/revoke") }
+    }
+
+    @Test
+    fun anotherUserOnTheSameServerIsAdded() = runBlocking {
+        model.signIn(fake.url, "a@example.com", fake.password, "")
+        answerAs("b@example.com", "u2")
+        model.signIn(fake.url, "b@example.com", fake.password, "")
+        assertEquals(listOf("a@example.com", "b@example.com"), harness.store.loadAll().map { it.auth.userName })
+    }
+
+    @Test
+    fun theDemoAddedAgainIsRefused() = runBlocking {
+        fake.demo = "demo@example.com" to fake.password
+        answerAs("demo@example.com", "u9")
+        model.addDemo()
+        expectMessage(AppR.string.error_already_added) { model.addDemo() }
+        assertEquals(listOf(ServersModel.DEMO_NAME), harness.store.loadAll().map { it.displayName })
+    }
+
+    @Test
+    fun anAddressTypedDifferentlyNamesTheSameServer() {
+        val key = addressKey("https://music.example.com")
+        assertEquals(key, addressKey("http://music.example.com/"))
+        assertEquals(key, addressKey("HTTPS://Music.Example.COM/"))
+        assertEquals(key, addressKey(" music.example.com "))
+        assertEquals(key, addressKey("https://music.example.com:443"))
+        assertEquals(addressKey("http://10.0.0.5:4533"), addressKey("https://10.0.0.5:4533/"))
+        assertFalse(key == addressKey("https://music.example.com:8443"))
+        assertFalse(key == addressKey("https://music.example.com/other"))
+    }
+
     @Test
     fun renamingAndRemoving() = runBlocking {
         model.signIn(fake.url, "a@example.com", fake.password, "")
-        model.signIn(fake.url, "a@example.com", fake.password, "Second")
+        answerAs("b@example.com", "u2")
+        model.signIn(fake.url, "b@example.com", fake.password, "Second")
         val (first, second) = harness.store.loadAll()
         model.rename(first.id, "  Kitchen  ")
         assertEquals("Kitchen", model.state.value.server(first.id)?.displayName)

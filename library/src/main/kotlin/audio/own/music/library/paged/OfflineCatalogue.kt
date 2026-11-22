@@ -86,11 +86,11 @@ class OfflineCatalogue(
     suspend fun genres(): List<Genre> = dao.genres(serverId).map { Genre(id(it.id), it.name, it.albumCount, it.songCount) }
 
     suspend fun search(text: String, limit: Int): SearchResult {
-        val pattern = "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        val pattern = audio.own.music.library.db.CatalogueSearch.like(text)
         return SearchResult(
             artists = dao.searchArtists(serverId, pattern, limit).map(::artist),
             albums = dao.searchAlbums(serverId, pattern, limit).map(::album),
-            songs = dao.searchTracks(serverId, pattern, limit).map { song(it) },
+            songs = dao.searchSongs(serverId, text, limit).map { song(it) },
         )
     }
 

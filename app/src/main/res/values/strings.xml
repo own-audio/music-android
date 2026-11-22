@@ -194,6 +194,7 @@
     <string name="downloads_offline_footer">Offline Mode shows and plays only what is on this device, as it does on its own with no network. Saves mobile data.\n\nWith Whole Library, the offline screens list everything on the server, from a copy of its catalog kept on this device; what isn\'t downloaded is grayed out. Albums open offline either way.\n\nOver the limit, the songs not played for longest go first; never the one playing.</string>
     <string name="offline_none_downloaded">You\'re offline, and none of these songs are downloaded.</string>
     <!-- M7, M8: Subsonic and Jellyfin. -->
+    <string name="error_already_added">This server is already added. To sign in again, open it in Settings.</string>
     <string name="error_token_sign_in_refused">This server doesn\'t accept Subsonic sign-in with a token. Ampache and accounts kept in LDAP sign in only with a plain password, which this app never sends.</string>
     <string name="quick_connect_title">Quick Connect</string>
     <string name="quick_connect_didnt_work">Quick Connect Didn\'t Work</string>
@@ -211,6 +212,11 @@
     <string name="jellyfin_api">Jellyfin API</string>
     <string name="library_on_this_device">Library on This Device</string>
     <string name="update_now">Update Now</string>
+    <!-- The first snapshot's progress on the server page; %s is the count, formatted. -->
+    <plurals name="catalogue_reading">
+        <item quantity="one">Reading the library… %s song</item>
+        <item quantity="other">Reading the library… %s songs</item>
+    </plurals>
     <string name="updating">Updating…</string>
     <string name="catalogue_counts">Songs: %1$d · Albums: %2$d</string>
     <string name="catalogue_updated">Updated %1$s</string>

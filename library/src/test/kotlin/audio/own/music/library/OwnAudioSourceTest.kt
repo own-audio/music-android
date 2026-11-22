@@ -98,6 +98,44 @@ class OwnAudioSourceTest {
         }
     }
 
+    /** The demo's answer to Shuffle All, recorded: every song comes back with its album and artist. */
+    @Test fun `random songs - the demo's recorded answer`() = runBlocking<Unit> {
+        val (stub, src) = stub { if (it.url.encodedPath == "/api/v2/tracks/random") json(answer("random")) else null }
+        stub.use {
+            val songs = src.randomSongs(100)
+            assertEquals(38, songs.size)
+            val first = songs.first { it.title == "Also Sprach Zarathustra" }
+            assertEquals("Classical Sampler", first.album)
+            assertEquals("albums,contributors,genres", stub.requests.last().url.queryParameter("include"))
+        }
+    }
+
+    /**
+     * Shuffle All answered by the server is played even when the catalogue on the phone can't be
+     * read: here one a newer version made ("a migration from 5 to 4 was required").
+     */
+    @Test fun `random songs - the server's answer without the catalogue`() = runBlocking<Unit> {
+        val context = org.robolectric.RuntimeEnvironment.getApplication()
+        val file = context.getDatabasePath("newer-catalogue.db").also { it.parentFile?.mkdirs(); it.delete() }
+        android.database.sqlite.SQLiteDatabase.openOrCreateDatabase(file, null).use { it.version = 99 }
+        val unreadable = CatalogueDatabase.builder(context, file.path).build()
+        val stub = StubServer { request ->
+            when (request.url.encodedPath) {
+                "/api/v2/tracks/random" -> json(answer("random"))
+                "/api/v2/me" -> json(ME)
+                else -> notFound()
+            }
+        }
+        try {
+            val src = OwnAudioSource(SERVER, "me@example.com", stub.client(), unreadable)
+            assertEquals(38, src.randomSongs(100).size)
+        } finally {
+            stub.close()
+            unreadable.close()
+            file.delete()
+        }
+    }
+
     @Test fun `a playlist - whose it is by owner, each song with its entry id, kept for offline`() = runBlocking<Unit> {
         seed(
             record("contributor", "band", band),

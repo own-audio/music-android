@@ -1,0 +1,1012 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 4,
+    "identityHash": "2833c84762eef3aa08be192f3eefa58c",
+    "entities": [
+      {
+        "tableName": "artist",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `id` TEXT NOT NULL, `name` TEXT NOT NULL COLLATE NOCASE, `sortName` TEXT, `image` TEXT, `gen` INTEGER NOT NULL, PRIMARY KEY(`serverId`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortName",
+            "columnName": "sortName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "image",
+            "columnName": "image",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "gen",
+            "columnName": "gen",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_artist_serverId_name",
+            "unique": false,
+            "columnNames": [
+              "serverId",
+              "name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_artist_serverId_name` ON `${TABLE_NAME}` (`serverId`, `name`)"
+          }
+        ]
+      },
+      {
+        "tableName": "album",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `id` TEXT NOT NULL, `title` TEXT NOT NULL COLLATE NOCASE, `artistLine` TEXT COLLATE NOCASE, `artistId` TEXT, `year` INTEGER, `releaseDate` TEXT, `releaseGroupId` TEXT, `isCompilation` INTEGER NOT NULL, `trackCount` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, `discCount` INTEGER NOT NULL, `image` TEXT, `createdAtMs` INTEGER NOT NULL, `gen` INTEGER NOT NULL, PRIMARY KEY(`serverId`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artistLine",
+            "columnName": "artistLine",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "artistId",
+            "columnName": "artistId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "year",
+            "columnName": "year",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "releaseDate",
+            "columnName": "releaseDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "releaseGroupId",
+            "columnName": "releaseGroupId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isCompilation",
+            "columnName": "isCompilation",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trackCount",
+            "columnName": "trackCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMs",
+            "columnName": "durationMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "discCount",
+            "columnName": "discCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "image",
+            "columnName": "image",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAtMs",
+            "columnName": "createdAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gen",
+            "columnName": "gen",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_album_serverId_title",
+            "unique": false,
+            "columnNames": [
+              "serverId",
+              "title"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_album_serverId_title` ON `${TABLE_NAME}` (`serverId`, `title`)"
+          },
+          {
+            "name": "index_album_serverId_artistLine_year_title",
+            "unique": false,
+            "columnNames": [
+              "serverId",
+              "artistLine",
+              "year",
+              "title"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_album_serverId_artistLine_year_title` ON `${TABLE_NAME}` (`serverId`, `artistLine`, `year`, `title`)"
+          },
+          {
+            "name": "index_album_serverId_createdAtMs",
+            "unique": false,
+            "columnNames": [
+              "serverId",
+              "createdAtMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_album_serverId_createdAtMs` ON `${TABLE_NAME}` (`serverId`, `createdAtMs`)"
+          },
+          {
+            "name": "index_album_serverId_artistId",
+            "unique": false,
+            "columnNames": [
+              "serverId",
+              "artistId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_album_serverId_artistId` ON `${TABLE_NAME}` (`serverId`, `artistId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "track",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `id` TEXT NOT NULL, `title` TEXT NOT NULL COLLATE NOCASE, `albumId` TEXT, `albumTitle` TEXT COLLATE NOCASE, `artistLine` TEXT COLLATE NOCASE, `artistId` TEXT, `discNumber` INTEGER, `trackNumber` INTEGER, `durationMs` INTEGER, `genreName` TEXT, `contentType` TEXT, `sizeBytes` INTEGER, `image` TEXT, `ownerId` TEXT NOT NULL, `visibility` TEXT NOT NULL, `chapterCount` INTEGER NOT NULL, `createdAtMs` INTEGER NOT NULL, `updatedAtMs` INTEGER NOT NULL, `gen` INTEGER NOT NULL, `suffix` TEXT, `bitRate` INTEGER, `trackGain` REAL, `albumGain` REAL, `trackPeak` REAL, `albumPeak` REAL, PRIMARY KEY(`serverId`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "albumId",
+            "columnName": "albumId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "albumTitle",
+            "columnName": "albumTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "artistLine",
+            "columnName": "artistLine",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "artistId",
+            "columnName": "artistId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "discNumber",
+            "columnName": "discNumber",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "trackNumber",
+            "columnName": "trackNumber",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "durationMs",
+            "columnName": "durationMs",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "genreName",
+            "columnName": "genreName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "contentType",
+            "columnName": "contentType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sizeBytes",
+            "columnName": "sizeBytes",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "image",
+            "columnName": "image",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ownerId",
+            "columnName": "ownerId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "visibility",
+            "columnName": "visibility",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "chapterCount",
+            "columnName": "chapterCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtMs",
+            "columnName": "createdAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMs",
+            "columnName": "updatedAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gen",
+            "columnName": "gen",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "suffix",
+            "columnName": "suffix",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "bitRate",
+            "columnName": "bitRate",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "trackGain",
+            "columnName": "trackGain",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "albumGain",
+            "columnName": "albumGain",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "trackPeak",
+            "columnName": "trackPeak",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "albumPeak",
+            "columnName": "albumPeak",
+            "affinity": "REAL"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_track_serverId_albumId_discNumber_trackNumber",
+            "unique": false,
+            "columnNames": [
+              "serverId",
+              "albumId",
+              "discNumber",
+              "trackNumber"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_track_serverId_albumId_discNumber_trackNumber` ON `${TABLE_NAME}` (`serverId`, `albumId`, `discNumber`, `trackNumber`)"
+          },
+          {
+            "name": "index_track_serverId_title_artistLine_albumTitle",
+            "unique": false,
+            "columnNames": [
+              "serverId",
+              "title",
+              "artistLine",
+              "albumTitle"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_track_serverId_title_artistLine_albumTitle` ON `${TABLE_NAME}` (`serverId`, `title`, `artistLine`, `albumTitle`)"
+          }
+        ]
+      },
+      {
+        "tableName": "genre",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `id` TEXT NOT NULL, `name` TEXT NOT NULL COLLATE NOCASE, `gen` INTEGER NOT NULL, PRIMARY KEY(`serverId`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gen",
+            "columnName": "gen",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_genre_serverId_name",
+            "unique": false,
+            "columnNames": [
+              "serverId",
+              "name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_genre_serverId_name` ON `${TABLE_NAME}` (`serverId`, `name`)"
+          }
+        ]
+      },
+      {
+        "tableName": "track_genre",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `trackId` TEXT NOT NULL, `genreId` TEXT NOT NULL, `ord` INTEGER NOT NULL, `albumId` TEXT, `gen` INTEGER NOT NULL, PRIMARY KEY(`serverId`, `trackId`, `genreId`))",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trackId",
+            "columnName": "trackId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "genreId",
+            "columnName": "genreId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ord",
+            "columnName": "ord",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "albumId",
+            "columnName": "albumId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "gen",
+            "columnName": "gen",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "trackId",
+            "genreId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_track_genre_serverId_genreId_albumId",
+            "unique": false,
+            "columnNames": [
+              "serverId",
+              "genreId",
+              "albumId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_track_genre_serverId_genreId_albumId` ON `${TABLE_NAME}` (`serverId`, `genreId`, `albumId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "album_credit",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `albumId` TEXT NOT NULL, `ord` INTEGER NOT NULL, `contributorId` TEXT NOT NULL, `role` TEXT NOT NULL, `joinPhrase` TEXT NOT NULL, `creditedAs` TEXT, `gen` INTEGER NOT NULL, PRIMARY KEY(`serverId`, `albumId`, `ord`))",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "albumId",
+            "columnName": "albumId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ord",
+            "columnName": "ord",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contributorId",
+            "columnName": "contributorId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "role",
+            "columnName": "role",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "joinPhrase",
+            "columnName": "joinPhrase",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "creditedAs",
+            "columnName": "creditedAs",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "gen",
+            "columnName": "gen",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "albumId",
+            "ord"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_album_credit_serverId_contributorId_role",
+            "unique": false,
+            "columnNames": [
+              "serverId",
+              "contributorId",
+              "role"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_album_credit_serverId_contributorId_role` ON `${TABLE_NAME}` (`serverId`, `contributorId`, `role`)"
+          }
+        ]
+      },
+      {
+        "tableName": "track_credit",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `trackId` TEXT NOT NULL, `ord` INTEGER NOT NULL, `contributorId` TEXT NOT NULL, `role` TEXT NOT NULL, `joinPhrase` TEXT NOT NULL, `creditedAs` TEXT, `gen` INTEGER NOT NULL, PRIMARY KEY(`serverId`, `trackId`, `ord`))",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trackId",
+            "columnName": "trackId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ord",
+            "columnName": "ord",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contributorId",
+            "columnName": "contributorId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "role",
+            "columnName": "role",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "joinPhrase",
+            "columnName": "joinPhrase",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "creditedAs",
+            "columnName": "creditedAs",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "gen",
+            "columnName": "gen",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "trackId",
+            "ord"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_track_credit_serverId_contributorId_role",
+            "unique": false,
+            "columnNames": [
+              "serverId",
+              "contributorId",
+              "role"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_track_credit_serverId_contributorId_role` ON `${TABLE_NAME}` (`serverId`, `contributorId`, `role`)"
+          }
+        ]
+      },
+      {
+        "tableName": "playlist",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `id` TEXT NOT NULL, `name` TEXT NOT NULL COLLATE NOCASE, `description` TEXT, `visibility` TEXT NOT NULL, `ownerId` TEXT NOT NULL, `trackCount` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, `image` TEXT, `generated` INTEGER NOT NULL, `updatedAtMs` INTEGER NOT NULL, `gen` INTEGER NOT NULL, PRIMARY KEY(`serverId`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "visibility",
+            "columnName": "visibility",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ownerId",
+            "columnName": "ownerId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trackCount",
+            "columnName": "trackCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMs",
+            "columnName": "durationMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "image",
+            "columnName": "image",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "generated",
+            "columnName": "generated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMs",
+            "columnName": "updatedAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gen",
+            "columnName": "gen",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_playlist_serverId_name",
+            "unique": false,
+            "columnNames": [
+              "serverId",
+              "name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_serverId_name` ON `${TABLE_NAME}` (`serverId`, `name`)"
+          }
+        ]
+      },
+      {
+        "tableName": "playlist_entry",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `playlistId` TEXT NOT NULL, `entryId` TEXT NOT NULL, `position` INTEGER NOT NULL, `trackId` TEXT NOT NULL, PRIMARY KEY(`serverId`, `playlistId`, `entryId`))",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playlistId",
+            "columnName": "playlistId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryId",
+            "columnName": "entryId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "trackId",
+            "columnName": "trackId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "playlistId",
+            "entryId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_playlist_entry_serverId_playlistId_position",
+            "unique": false,
+            "columnNames": [
+              "serverId",
+              "playlistId",
+              "position"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_entry_serverId_playlistId_position` ON `${TABLE_NAME}` (`serverId`, `playlistId`, `position`)"
+          }
+        ]
+      },
+      {
+        "tableName": "favourite",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `kind` TEXT NOT NULL, `id` TEXT NOT NULL, `createdAtMs` INTEGER NOT NULL, `gen` INTEGER NOT NULL, PRIMARY KEY(`serverId`, `kind`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAtMs",
+            "columnName": "createdAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gen",
+            "columnName": "gen",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "kind",
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "rating",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `kind` TEXT NOT NULL, `id` TEXT NOT NULL, `rating` INTEGER NOT NULL, `updatedAtMs` INTEGER NOT NULL, `gen` INTEGER NOT NULL, PRIMARY KEY(`serverId`, `kind`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAtMs",
+            "columnName": "updatedAtMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gen",
+            "columnName": "gen",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId",
+            "kind",
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "feed_state",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`serverId` TEXT NOT NULL, `cursor` TEXT, `syncedAtMs` INTEGER, `userId` TEXT, `generation` INTEGER NOT NULL, `snapshotCursor` TEXT, `snapshotAfter` TEXT, PRIMARY KEY(`serverId`))",
+        "fields": [
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cursor",
+            "columnName": "cursor",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "syncedAtMs",
+            "columnName": "syncedAtMs",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "generation",
+            "columnName": "generation",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "snapshotCursor",
+            "columnName": "snapshotCursor",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "snapshotAfter",
+            "columnName": "snapshotAfter",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "serverId"
+          ]
+        }
+      },
+      {
+        "tableName": "track_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`title` TEXT NOT NULL, `artistLine` TEXT, `albumTitle` TEXT, tokenize=unicode61, content=`track`)",
+        "fields": [
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artistLine",
+            "columnName": "artistLine",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "albumTitle",
+            "columnName": "albumTitle",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": []
+        },
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "unicode61",
+          "tokenizerArgs": [],
+          "contentTable": "track",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_track_fts_BEFORE_UPDATE BEFORE UPDATE ON `track` BEGIN DELETE FROM `track_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_track_fts_BEFORE_DELETE BEFORE DELETE ON `track` BEGIN DELETE FROM `track_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_track_fts_AFTER_UPDATE AFTER UPDATE ON `track` BEGIN INSERT INTO `track_fts`(`docid`, `title`, `artistLine`, `albumTitle`) VALUES (NEW.`rowid`, NEW.`title`, NEW.`artistLine`, NEW.`albumTitle`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_track_fts_AFTER_INSERT AFTER INSERT ON `track` BEGIN INSERT INTO `track_fts`(`docid`, `title`, `artistLine`, `albumTitle`) VALUES (NEW.`rowid`, NEW.`title`, NEW.`artistLine`, NEW.`albumTitle`); END"
+        ]
+      },
+      {
+        "tableName": "deferred_schema",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`name` TEXT NOT NULL, `sql` TEXT NOT NULL, PRIMARY KEY(`name`))",
+        "fields": [
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sql",
+            "columnName": "sql",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "name"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2833c84762eef3aa08be192f3eefa58c')"
+    ]
+  }
+}

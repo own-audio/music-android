@@ -157,6 +157,34 @@ class OtherServersTest {
     }
 
     @Test
+    fun aJellyfinAccountAddedAgainIsRefusedBeforeSigningIn() = runBlocking {
+        model.signIn(jellyfin.url, "alex", "pw", "")
+        // The address typed differently (a trailing slash), the name in another case.
+        expectMessage(AppR.string.error_already_added) { model.signIn(jellyfin.url + "/", " Alex ", "pw", "Again") }
+        assertEquals(1, harness.store.loadAll().size)
+        assertEquals("refused before signing in", 1, jellyfin.seen().count { it.url.encodedPath == "/Users/AuthenticateByName" })
+    }
+
+    @Test
+    fun theSameJellyfinAccountThroughQuickConnectIsRefusedAndItsSessionEnded() = runBlocking {
+        model.signIn(jellyfin.url, "alex", "pw", "")
+        val found = model.quickConnectServer(jellyfin.url)
+        expectMessage(AppR.string.error_already_added) { model.finishQuickConnect(found, "sec", "") }
+        assertEquals(1, harness.store.loadAll().size)
+        eventually { jellyfin.seen().any { it.url.encodedPath == "/Sessions/Logout" } }
+    }
+
+    @Test
+    fun aSubsonicAccountAddedAgainIsRefusedButAnotherUserIsAdded() = runBlocking {
+        model.signIn(subsonic.url, "alex", "pw", "")
+        expectMessage(AppR.string.error_already_added) { model.signIn(subsonic.url + "/", "ALEX", "pw", "") }
+        assertEquals(1, harness.store.loadAll().size)
+        subsonic.user = "sam"
+        model.signIn(subsonic.url, "sam", "pw", "")
+        assertEquals(listOf("alex", "sam"), harness.store.loadAll().map { it.auth.userName })
+    }
+
+    @Test
     fun theMusicLibrariesAreListedAndTheChoiceKept() = runBlocking {
         model.signIn(jellyfin.url, "alex", "pw", "")
         val id = model.state.value.activeId!!

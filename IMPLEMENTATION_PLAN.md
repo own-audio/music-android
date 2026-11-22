@@ -34,10 +34,10 @@ the first of the three apps, so the foundation is written here) and the music ap
 | M10 | own.audio extras: sharing, covers, concerts | ◐ screens built 2026-11-22; to try on a writable own.audio account with own songs and a concert |
 | M11 | Identify (MusicBrainz) | ◐ screens built 2026-11-22; a run from start to accept to undo still to try on a real own.audio server |
 | F8 + M12 | Android Auto, widget, deep links, voice, background refresh | ◐ built 2026-11-22: browse tree, search, voice, links and the widget (both sizes) checked on the emulator; Auto on a head unit still to see |
-| F9 + M13 | Localization, accessibility, tablets, misuse tests, scale | ◐ built 2026-11-22. Scale on the emulator, 600k tracks: browsing pages 2–330 ms, artists 0.3 s (was 97 s), memory ~140 MB; still open: the first-sync insert (445 s, needs to be much faster), first-snapshot progress on the server page, full-text search for offline song search (~1 s) |
+| F9 + M13 | Localization, accessibility, tablets, misuse tests, scale | ◐ built 2026-11-22. Scale on the emulator, 600k tracks: first sync 166 s (was 518 s) with its progress on the server page, browsing pages 2–330 ms, offline song search 1–165 ms (word-start matching), memory ~140 MB; a TalkBack walk on a device still to do |
 | F10 + M14 | Release: Play, F-Droid, guide | ◐ prepared 2026-11-22: release builds (9.2 MB), release workflow, store texts en/cs, guide, docs/release.md; the maintainer's steps (Play Console, keys, OAuth clients, F-Droid, Pages) are listed there |
 
-**Where we stopped:** F9/M13 built 2026-11-22. Next: a faster first-sync insert and its progress line, full-text song search, the release phase (F10/M14), the duplicate-server refusal from book/podcast-android, the end-to-end suite.
+**Where we stopped:** 2026-11-22 — every phase built; next is the full test of each app on the emulator against canary and the NAS (own.audio 1.0.7, Navidrome, Jellyfin), then the Play Store registration (on hold).
 
 ## Rules for whoever executes this plan
 

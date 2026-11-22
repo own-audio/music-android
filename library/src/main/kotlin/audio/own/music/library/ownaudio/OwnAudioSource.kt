@@ -326,12 +326,12 @@ class OwnAudioSource(
     }
 
     suspend fun searchCatalogue(text: String): SearchResult {
-        val pattern = "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        val pattern = audio.own.music.library.db.CatalogueSearch.like(text)
         val m = models()
         return SearchResult(
             artists = dao.searchArtists(serverId, pattern, SEARCH_LIMIT).map(m::artist),
             albums = dao.searchAlbums(serverId, pattern, SEARCH_LIMIT).map { m.album(it) },
-            songs = dao.searchTracks(serverId, pattern, SEARCH_LIMIT).map { m.song(it) },
+            songs = dao.searchSongs(serverId, text, SEARCH_LIMIT).map { m.song(it) },
         )
     }
 
@@ -800,6 +800,8 @@ class OwnAudioSource(
 
     // region Catalogue, offline edits, live updates
 
+    override val catalogueProgress: kotlinx.coroutines.flow.StateFlow<Int?> get() = feed.progress
+
     override suspend fun syncCatalogue(): CatalogueSyncResult {
         if (client.tokens?.current == null) throw SourceError.Unsupported()
         val result = api { feed.sync() }
@@ -943,8 +945,21 @@ class OwnAudioSource(
 
     private suspend fun currentGeneration(): Long = dao.feedState(serverId)?.generation ?: 0
 
+    /**
+     * Whose each song is comes from the catalogue when no sync has told it yet. An answer the
+     * server gave is shown even when the catalogue can't be read (still being made, or a
+     * database this version can't open): only the owner marks are missing then.
+     */
     private suspend fun mapper(included: audio.own.kit.ownaudio.Included?): RecordMapper {
-        if (listener.current.userId == null) userId()
+        if (listener.current.userId == null) {
+            try {
+                userId()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // left unknown
+            }
+        }
         return RecordMapper(serverId, included, listener.current)
     }
 

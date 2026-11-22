@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
@@ -89,6 +90,8 @@ data class CatalogueUi(
     val albums: Int? = null,
     val syncedAtMs: Long? = null,
     val syncing: Boolean = false,
+    /** Songs read so far by a snapshot running now. */
+    val reading: Int? = null,
     val error: String? = null,
     val offline: Boolean = false,
 )
@@ -102,7 +105,12 @@ private fun CatalogueRow(c: CatalogueUi) {
     ) {
         when {
             c.syncing -> {
-                Text(stringResource(AppR.string.updating), modifier = Modifier.weight(1f))
+                val text = if (c.reading != null) {
+                    pluralStringResource(AppR.plurals.catalogue_reading, c.reading, java.text.NumberFormat.getIntegerInstance().format(c.reading))
+                } else {
+                    stringResource(AppR.string.updating)
+                }
+                Text(text, modifier = Modifier.weight(1f))
                 androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             }
             c.songs != null && c.albums != null && c.syncedAtMs != null -> {

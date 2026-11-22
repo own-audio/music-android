@@ -199,6 +199,7 @@
     <string name="downloads_offline_footer">Režim offline zobrazuje a přehrává jen to, co je v tomto zařízení, stejně jako bez sítě. Šetří mobilní data.\n\nS celou knihovnou ukazují offline obrazovky vše, co je na serveru, z kopie jeho katalogu uložené v tomto zařízení; co není stažené, je zašedlé. Alba se offline otevřou v obou případech.\n\nNad limitem jdou první skladby, které nehrály nejdéle; nikdy ne ta, která hraje.</string>
     <string name="offline_none_downloaded">Jste offline a žádná z těchto skladeb není stažená.</string>
     <!-- M7, M8: Subsonic a Jellyfin. -->
+    <string name="error_already_added">Tento server už je přidaný. Znovu se přihlásíte v Nastavení na jeho stránce.</string>
     <string name="error_token_sign_in_refused">Tento server nepřijímá přihlášení přes Subsonic tokenem. Ampache a účty vedené v LDAP se přihlašují jen čitelným heslem, které tato aplikace nikdy neposílá.</string>
     <string name="quick_connect_title">Quick Connect</string>
     <string name="quick_connect_didnt_work">Quick Connect se nepovedl</string>
@@ -216,6 +217,12 @@
     <string name="jellyfin_api">Jellyfin API</string>
     <string name="library_on_this_device">Knihovna v tomto zařízení</string>
     <string name="update_now">Aktualizovat</string>
+    <plurals name="catalogue_reading">
+        <item quantity="one">Načítá se knihovna… %s skladba</item>
+        <item quantity="few">Načítá se knihovna… %s skladby</item>
+        <item quantity="many">Načítá se knihovna… %s skladby</item>
+        <item quantity="other">Načítá se knihovna… %s skladeb</item>
+    </plurals>
     <string name="updating">Aktualizuje se…</string>
     <string name="catalogue_counts">Skladby: %1$d · Alba: %2$d</string>
     <string name="catalogue_updated">Aktualizováno %1$s</string>

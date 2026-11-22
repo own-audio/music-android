@@ -13,6 +13,7 @@ import audio.own.music.library.model.Genre
 import audio.own.music.library.model.Playlist
 import audio.own.music.library.model.SearchResult
 import audio.own.music.library.model.Song
+import audio.own.musicplayer.app.AppLog
 import audio.own.musicplayer.app.Load
 import audio.own.musicplayer.app.userMessage
 import kotlin.coroutines.cancellation.CancellationException
@@ -87,6 +88,7 @@ class HomeViewModel(
     private val isOffline: () -> Boolean,
     private val onError: (Throwable) -> Unit = {},
     offlineHome: suspend () -> HomeContentState = { HomeContentState() },
+    private val log: AppLog? = null,
 ) : LoadViewModel<HomeContentState>({ if (isOffline()) offlineHome() else home(source, false) }) {
     private val _shuffling = MutableStateFlow(false)
     val shuffling: StateFlow<Boolean> = _shuffling.asStateFlow()
@@ -101,6 +103,7 @@ class HomeViewModel(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
+                log?.error("library", "Shuffle All failed: ${AppLog.describe(error)}")
                 onError(error)
             } finally {
                 _shuffling.value = false
@@ -255,6 +258,7 @@ class GenreViewModel(
     private val source: MusicSource,
     private val genre: Genre,
     private val onError: (Throwable) -> Unit = {},
+    private val log: AppLog? = null,
 ) : LoadViewModel<List<Album>>({ source.albums(genre, 200) }) {
     private val _shuffling = MutableStateFlow(false)
     val shuffling: StateFlow<Boolean> = _shuffling.asStateFlow()
@@ -268,6 +272,7 @@ class GenreViewModel(
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
+                log?.error("library", "genre shuffle failed: ${AppLog.describe(error)}")
                 onError(error)
             } finally {
                 _shuffling.value = false

@@ -254,6 +254,7 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
                         albums = detail.catalogue?.albums,
                         syncedAtMs = detail.catalogue?.syncedAtMs,
                         syncing = id in sync.syncing,
+                        reading = sync.reading[id],
                         error = sync.failures[id]?.text(),
                         offline = container.offline.isOffline,
                     ),

@@ -24,8 +24,11 @@ import audio.own.kit.ownaudio.Genre as ApiGenre
 import audio.own.kit.ownaudio.Playlist as ApiPlaylist
 import audio.own.kit.ownaudio.Track as ApiTrack
 
-/** One record from the feed: its new state, or its removal ([record] null). */
-data class FeedItem(val kind: String, val id: String, val record: JsonObject?)
+/**
+ * One record from the feed: its new state, or its removal ([record] null). [decoded] is the
+ * record already read into the API's type ([CatalogueWriter.decode]), when it was.
+ */
+data class FeedItem(val kind: String, val id: String, val record: JsonObject?, val decoded: Any? = null)
 
 /**
  * Writes feed records into the catalogue. Run it inside a Room transaction; it holds name caches,
@@ -35,12 +38,17 @@ data class FeedItem(val kind: String, val id: String, val record: JsonObject?)
  * the names a credit line needs are written before the albums and tracks that need them. Changes
  * come in any order, so with [changes] a renamed contributor, album or genre also rewrites the
  * lines and titles copied onto what refers to it.
+ *
+ * [fresh] says the server has no rows yet that these records could replace: a first snapshot.
+ * Its albums, songs, credits and genres are inserted without clearing or updating anything; a
+ * record sent twice (a resumed snapshot) is the same record, so the first copy stays.
  */
 class CatalogueWriter(
     private val dao: CatalogueDao,
     private val serverId: String,
     private val gen: Long,
     private val changes: Boolean,
+    var fresh: Boolean = false,
 ) {
     private val contributorNames = HashMap<String, String>()
     private val albumTitles = HashMap<String, String>()
@@ -136,31 +144,29 @@ class CatalogueWriter(
         } else {
             emptyList()
         }
-        for (chunk in records.chunked(CHUNK)) dao.deleteAlbumCredits(serverId, chunk.map { it.id })
-        dao.upsertAlbums(
-            records.map { a ->
-                AlbumRow(
-                    serverId = serverId,
-                    id = a.id,
-                    title = a.title,
-                    artistLine = RecordMapper.creditLine(a.credits, RecordMapper.ALBUM_ROLES, contributorNames::get),
-                    artistId = RecordMapper.firstArtist(a.credits),
-                    year = RecordMapper.year(a.releaseDate),
-                    releaseDate = a.releaseDate,
-                    releaseGroupId = a.releaseGroupId,
-                    isCompilation = a.isCompilation,
-                    trackCount = a.trackCount.toInt(),
-                    durationMs = a.durationMs,
-                    discCount = a.discCount,
-                    image = a.image,
-                    createdAtMs = a.createdAt.toEpochMilli(),
-                    gen = gen,
-                )
-            },
-        )
-        dao.upsertAlbumCredits(
-            records.flatMap { a -> a.credits.mapIndexed { i, c -> AlbumCreditRow(serverId, a.id, i, c.contributorId, c.role, c.joinPhrase, c.creditedAs, gen) } },
-        )
+        if (!fresh) for (chunk in records.chunked(CHUNK)) dao.deleteAlbumCredits(serverId, chunk.map { it.id })
+        val albumRows = records.map { a ->
+            AlbumRow(
+                serverId = serverId,
+                id = a.id,
+                title = a.title,
+                artistLine = RecordMapper.creditLine(a.credits, RecordMapper.ALBUM_ROLES, contributorNames::get),
+                artistId = RecordMapper.firstArtist(a.credits),
+                year = RecordMapper.year(a.releaseDate),
+                releaseDate = a.releaseDate,
+                releaseGroupId = a.releaseGroupId,
+                isCompilation = a.isCompilation,
+                trackCount = a.trackCount.toInt(),
+                durationMs = a.durationMs,
+                discCount = a.discCount,
+                image = a.image,
+                createdAtMs = a.createdAt.toEpochMilli(),
+                gen = gen,
+            )
+        }
+        if (fresh) dao.insertNewAlbums(albumRows) else dao.upsertAlbums(albumRows)
+        val albumCredits = records.flatMap { a -> a.credits.mapIndexed { i, c -> AlbumCreditRow(serverId, a.id, i, c.contributorId, c.role, c.joinPhrase, c.creditedAs, gen) } }
+        if (fresh) dao.insertNewAlbumCredits(albumCredits) else dao.upsertAlbumCredits(albumCredits)
         for (a in records) albumTitles[a.id] = a.title
         for (a in retitled) dao.setAlbumTitleOnTracks(serverId, a.id, a.title)
     }
@@ -181,16 +187,19 @@ class CatalogueWriter(
         knowNames(records.flatMap { t -> t.credits.map { it.contributorId } })
         knowAlbumTitles(records.mapNotNull { it.albumId })
         knowGenreNames(records.mapNotNull { it.genreIds.firstOrNull() })
-        for (chunk in records.chunked(CHUNK)) {
-            val ids = chunk.map { it.id }
-            dao.deleteTrackCredits(serverId, ids)
-            dao.deleteTrackGenres(serverId, ids)
+        if (!fresh) {
+            for (chunk in records.chunked(CHUNK)) {
+                val ids = chunk.map { it.id }
+                dao.deleteTrackCredits(serverId, ids)
+                dao.deleteTrackGenres(serverId, ids)
+            }
         }
-        dao.upsertTracks(records.map(::trackRow))
-        dao.upsertTrackCredits(
-            records.flatMap { t -> t.credits.mapIndexed { i, c -> TrackCreditRow(serverId, t.id, i, c.contributorId, c.role, c.joinPhrase, c.creditedAs, gen) } },
-        )
-        dao.upsertTrackGenres(records.flatMap { t -> t.genreIds.distinct().mapIndexed { i, g -> TrackGenreRow(serverId, t.id, g, i, t.albumId, gen) } })
+        val rows = records.map(::trackRow)
+        if (fresh) dao.insertNewTracks(rows) else dao.upsertTracks(rows)
+        val credits = records.flatMap { t -> t.credits.mapIndexed { i, c -> TrackCreditRow(serverId, t.id, i, c.contributorId, c.role, c.joinPhrase, c.creditedAs, gen) } }
+        if (fresh) dao.insertNewTrackCredits(credits) else dao.upsertTrackCredits(credits)
+        val genres = records.flatMap { t -> t.genreIds.distinct().mapIndexed { i, g -> TrackGenreRow(serverId, t.id, g, i, t.albumId, gen) } }
+        if (fresh) dao.insertNewTrackGenres(genres) else dao.upsertTrackGenres(genres)
     }
 
     private fun trackRow(t: ApiTrack) = TrackRow(
@@ -254,8 +263,10 @@ class CatalogueWriter(
     }
 
     /** A record this version can't read is left out rather than failing the whole sync. */
-    private fun <T> decodeAll(run: List<FeedItem>, serializer: KSerializer<T>): List<T> =
-        run.mapNotNull { item -> item.record?.let { runCatching { OwnAudioJson.decodeFromJsonElement(serializer, it) }.getOrNull() } }
+    @Suppress("UNCHECKED_CAST")
+    private fun <T> decodeAll(run: List<FeedItem>, serializer: KSerializer<T>): List<T> = run.mapNotNull { item ->
+        (item.decoded as T?) ?: item.record?.let { runCatching { OwnAudioJson.decodeFromJsonElement(serializer, it) }.getOrNull() }
+    }
 
     private fun time(record: JsonObject?, key: String): Long =
         (record?.get(key) as? JsonPrimitive)?.takeIf { it.isString }?.content
@@ -264,6 +275,25 @@ class CatalogueWriter(
     companion object {
         /** Under SQLite's limit on bound parameters in one statement. */
         const val CHUNK = 500
+
+        /**
+         * [item] with its record read into the API's type, for kinds that have one: done ahead,
+         * off the thread that writes. A record this version can't read stays undecoded and is
+         * left out when written.
+         */
+        fun decode(item: FeedItem): FeedItem {
+            val record = item.record ?: return item
+            val serializer: KSerializer<*> = when (item.kind) {
+                "contributor" -> ApiContributor.serializer()
+                "album" -> ApiAlbum.serializer()
+                "genre" -> ApiGenre.serializer()
+                "track" -> ApiTrack.serializer()
+                "playlist" -> ApiPlaylist.serializer()
+                else -> return item
+            }
+            val decoded = runCatching { OwnAudioJson.decodeFromJsonElement(serializer, record) }.getOrNull() ?: return item
+            return item.copy(decoded = decoded)
+        }
 
         /** The kinds the music catalogue keeps; the feed's others (books, progress, …) are not this app's. */
         fun keeps(kind: String): Boolean = kind in RECORD_KINDS || kind in STATE_KINDS

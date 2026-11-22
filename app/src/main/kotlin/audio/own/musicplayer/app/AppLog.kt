@@ -79,6 +79,13 @@ class AppLog(private val dir: File?, private val capacity: Int = 2_000, private 
         /** Tokens and signatures live in query strings: an address is logged without its query. */
         fun redact(url: HttpUrl): String = url.newBuilder().query(null).fragment(null).build().toString()
 
+        /** A failure's kind and message, and its cause's, with any query string (tokens, signatures) left out. */
+        fun describe(error: Throwable): String = generateSequence(error) { it.cause }.take(3).joinToString(" <- ") {
+            "${it::class.simpleName}: ${it.message.orEmpty().replace(QUERY, "")}".trimEnd(' ', ':')
+        }
+
+        private val QUERY = Regex("""\?[^\s"']*""")
+
         fun clock(at: Instant): String = DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault()).format(at)
     }
 }

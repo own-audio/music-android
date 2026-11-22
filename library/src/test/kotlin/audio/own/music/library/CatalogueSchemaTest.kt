@@ -1,7 +1,6 @@
 package audio.own.music.library
 
 import android.database.sqlite.SQLiteDatabase
-import androidx.room.Room
 import audio.own.music.library.db.CatalogueDatabase
 import java.io.File
 import kotlinx.coroutines.runBlocking
@@ -65,12 +64,49 @@ class CatalogueSchemaTest {
             )
             sqlite.version = 1
         }
-        val db = Room.databaseBuilder(context, CatalogueDatabase::class.java, file.path).allowMainThreadQueries().build()
+        val db = CatalogueDatabase.builder(context, file.path).allowMainThreadQueries().build()
         try {
             val track = db.catalogue().track("srv", "t1")!!.track
             assertEquals("One", track.title)
             assertNull(track.suffix)
             assertNull(track.trackGain)
+            assertEquals(listOf("One"), db.catalogue().searchSongs("srv", "band", 10).map { it.track.title })
+        } finally {
+            db.close()
+            file.delete()
+        }
+    }
+
+    /** Version 3 to 4: the search table is made and filled from the songs kept, and kept in step after. */
+    @Test fun `version 3 migrates to 4 with its songs searchable`() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        val file = context.getDatabasePath("migrate-3-test.db").also { it.parentFile?.mkdirs(); it.delete() }
+        val v3 = (Json.parseToJsonElement(File("schemas/audio.own.music.library.db.CatalogueDatabase/3.json").readText()) as JsonObject)["database"]!!.jsonObject
+        SQLiteDatabase.openOrCreateDatabase(file, null).use { sqlite ->
+            for (entity in v3["entities"]!!.jsonArray) {
+                val table = entity.jsonObject["tableName"]!!.jsonPrimitive.content
+                sqlite.execSQL(entity.jsonObject["createSql"]!!.jsonPrimitive.content.replace("\${TABLE_NAME}", table))
+                entity.jsonObject["indices"]?.jsonArray?.forEach {
+                    sqlite.execSQL(it.jsonObject["createSql"]!!.jsonPrimitive.content.replace("\${TABLE_NAME}", table))
+                }
+            }
+            v3["setupQueries"]!!.jsonArray.forEach { sqlite.execSQL(it.jsonPrimitive.content) }
+            sqlite.execSQL(
+                """INSERT INTO track (serverId, id, title, albumId, albumTitle, artistLine, artistId, discNumber, trackNumber, durationMs,
+                genreName, contentType, sizeBytes, image, ownerId, visibility, chapterCount, createdAtMs, updatedAtMs, gen)
+                VALUES ('srv', 't1', 'Night Rain', 'al', 'First Album', 'The Band', 'band', 1, 1, 200000, NULL, 'audio/flac', 1, NULL, 'u', 'family', 0, 0, 0, 1)""",
+            )
+            sqlite.version = 3
+        }
+        val db = CatalogueDatabase.builder(context, file.path).allowMainThreadQueries().build()
+        try {
+            val dao = db.catalogue()
+            assertEquals(listOf("Night Rain"), dao.searchSongs("srv", "rain", 10).map { it.track.title })
+            assertEquals(listOf("Night Rain"), dao.searchSongs("srv", "first band", 10).map { it.track.title })
+            dao.upsertTracks(listOf(dao.track("srv", "t1")!!.track.copy(id = "t2", title = "Rainbow Road")))
+            assertEquals(listOf("Night Rain", "Rainbow Road"), dao.searchSongs("srv", "rain", 10).map { it.track.title })
+            val deferred = db.openHelper.readableDatabase.query("SELECT COUNT(*) FROM deferred_schema").use { it.moveToFirst(); it.getInt(0) }
+            assertEquals(0, deferred)
         } finally {
             db.close()
             file.delete()

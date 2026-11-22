@@ -289,7 +289,7 @@ private fun BannerAndMiniPlayer(container: AppContainer, onOpenPlayer: () -> Uni
 @UnstableApi
 @Composable
 private fun HomeRoute(container: AppContainer, env: LibraryEnv, nav: NavHostController, onSettings: () -> Unit) {
-    val vm = viewModel { HomeViewModel(env.source, env.isOffline, env.onError) { offlineHome(container, env.source) } }
+    val vm = viewModel { HomeViewModel(env.source, env.isOffline, env.onError, { offlineHome(container, env.source) }, container.log) }
     val content by vm.state.collectAsStateWithLifecycle()
     val refreshing by vm.refreshing.collectAsStateWithLifecycle()
     val shuffling by vm.shuffling.collectAsStateWithLifecycle()

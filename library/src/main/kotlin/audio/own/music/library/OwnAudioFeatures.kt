@@ -13,6 +13,8 @@ import audio.own.music.library.model.SongChapter
 import java.math.BigDecimal
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 // Features only own.audio servers have. Each is its own interface, so a screen asks
 // `source is HouseholdSource` (and that the server is signed in) instead of a capability flag,
@@ -34,7 +36,12 @@ data class CatalogueSyncResult(
 interface ChangeFeedCatalogue : MusicSource {
     /** Brings the catalogue up to date, from scratch when there is none or the server says so. */
     suspend fun syncCatalogue(): CatalogueSyncResult
+
+    /** Songs a snapshot has written so far while one runs (the server page shows it); null otherwise. */
+    val catalogueProgress: StateFlow<Int?> get() = NO_PROGRESS
 }
+
+private val NO_PROGRESS: StateFlow<Int?> = MutableStateFlow(null)
 
 /** A change made while offline, kept on the phone and sent later. */
 data class OfflineEdit(

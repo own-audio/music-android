@@ -1,6 +1,8 @@
 package audio.own.music.library.db
 
 import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Upsert
 
@@ -48,8 +50,31 @@ interface CatalogueDao {
     @Upsert suspend fun upsertRatings(rows: List<RatingRow>)
     @Upsert suspend fun upsertFeedState(row: FeedStateRow)
 
+    // A first snapshot's rows are new; the same record sent twice (a resumed snapshot) is the
+    // same, so the first one stays. One prepared statement for the whole list, no update tried.
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertNewAlbums(rows: List<AlbumRow>)
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertNewTracks(rows: List<TrackRow>)
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertNewTrackGenres(rows: List<TrackGenreRow>)
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertNewAlbumCredits(rows: List<AlbumCreditRow>)
+    @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insertNewTrackCredits(rows: List<TrackCreditRow>)
+
     @Query("SELECT * FROM feed_state WHERE serverId = :serverId")
     suspend fun feedState(serverId: String): FeedStateRow?
+
+    /** Whether the server has rows from an earlier snapshot: a catalogue to keep usable meanwhile. */
+    @Query(
+        """SELECT EXISTS(SELECT 1 FROM track WHERE serverId = :serverId AND gen < :gen)
+        OR EXISTS(SELECT 1 FROM album WHERE serverId = :serverId AND gen < :gen)""",
+    )
+    suspend fun hasOlderRows(serverId: String, gen: Long): Boolean
+
+    /** Other servers' songs, counted up to [limit]. */
+    @Query("SELECT COUNT(*) FROM (SELECT 1 FROM track WHERE serverId != :serverId LIMIT :limit)")
+    suspend fun otherServersTracks(serverId: String, limit: Int): Int
+
+    /** Songs a snapshot in generation [gen] has written so far. */
+    @Query("SELECT COUNT(*) FROM track WHERE serverId = :serverId AND gen = :gen")
+    suspend fun tracksOfGeneration(serverId: String, gen: Long): Int
 
     @Query("DELETE FROM artist WHERE serverId = :serverId AND id IN (:ids)")
     suspend fun deleteArtists(serverId: String, ids: List<String>)
@@ -332,6 +357,28 @@ interface CatalogueDao {
         ORDER BY t.title""",
     )
     suspend fun searchTracks(serverId: String, pattern: String, limit: Int): List<TrackView>
+
+    /**
+     * Songs whose title, artist line or album title has words starting with the words typed, from
+     * the search table; one or two letters are looked for anywhere in them instead (a word
+     * prefix that short matches too much to be worth an index).
+     */
+    suspend fun searchSongs(serverId: String, text: String, limit: Int): List<TrackView> {
+        val match = CatalogueSearch.match(text)
+        return if (match == null) searchTracks(serverId, CatalogueSearch.like(text), limit) else searchTracksByWords(serverId, match, limit)
+    }
+
+    /**
+     * [match] is an FTS query of word prefixes ([CatalogueSearch.match]). The `+`s keep SQLite
+     * from walking the title index and testing every song against the matches: the matches
+     * are read first, then sorted.
+     */
+    @Query(
+        """SELECT t.*, $TRACK_MARKS FROM track t WHERE t.rowid IN
+        (SELECT docid FROM track_fts WHERE track_fts MATCH :match)
+        AND +t.serverId = :serverId ORDER BY +t.title COLLATE NOCASE LIMIT :limit""",
+    )
+    suspend fun searchTracksByWords(serverId: String, match: String, limit: Int): List<TrackView>
 
     @Query(
         """SELECT al.*, $ALBUM_MARKS FROM album al WHERE al.serverId = :serverId

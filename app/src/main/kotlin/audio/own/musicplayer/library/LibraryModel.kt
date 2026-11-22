@@ -33,6 +33,7 @@ import audio.own.musicplayer.servers.ServersModel
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -157,6 +158,8 @@ class LibraryModel(
         val syncing: Set<String> = emptySet(),
         /** Why a server's last sync failed. */
         val failures: Map<String, UiText> = emptyMap(),
+        /** Songs a snapshot has read so far, by server, while one runs. */
+        val reading: Map<String, Int> = emptyMap(),
         /** Bumped after every sync that changed something: screens reload. */
         val revision: Int = 0,
         val lastSyncedAtMs: Long? = null,
@@ -263,7 +266,7 @@ class LibraryModel(
                 again -= serverId
                 _sync.update { it.copy(serverId = serverId, running = serverId == servers.state.value.activeId, syncing = it.syncing + serverId, failures = it.failures - serverId) }
                 try {
-                    val changed = runSync(source, force)
+                    val changed = runSync(serverId, source, force)
                     syncedAt[serverId] = now()
                     _sync.update {
                         it.copy(
@@ -285,9 +288,21 @@ class LibraryModel(
     }
 
     /** True when the catalogue changed. */
-    private suspend fun runSync(source: MusicSource, force: Boolean): Boolean = when (source) {
+    private suspend fun runSync(serverId: String, source: MusicSource, force: Boolean): Boolean = when (source) {
         is ChangeFeedCatalogue -> {
-            val result = source.syncCatalogue()
+            val result = coroutineScope {
+                val watching = launch {
+                    source.catalogueProgress.collect { songs ->
+                        _sync.update { it.copy(reading = if (songs == null) it.reading - serverId else it.reading + (serverId to songs)) }
+                    }
+                }
+                try {
+                    source.syncCatalogue()
+                } finally {
+                    watching.cancel()
+                    _sync.update { it.copy(reading = it.reading - serverId) }
+                }
+            }
             log.info("library", "catalogue synced: ${result.changes} changes${if (result.fromSnapshot) " (snapshot)" else ""}")
             result.changes > 0
         }
@@ -313,7 +328,7 @@ class LibraryModel(
         if (source is PagedCatalogue && !onUnmeteredNetwork()) return true
         syncJobs[serverId]?.join()
         return try {
-            val changed = runSync(source, force = false)
+            val changed = runSync(serverId, source, force = false)
             syncedAt[serverId] = now()
             _sync.update { it.copy(serverId = serverId, revision = if (changed) it.revision + 1 else it.revision, lastSyncedAtMs = now()) }
             true
