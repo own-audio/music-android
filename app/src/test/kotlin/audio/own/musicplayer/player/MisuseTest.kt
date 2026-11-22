@@ -9,7 +9,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.test.utils.FakeClock
 import androidx.media3.test.utils.TestExoPlayerBuilder
-import androidx.media3.common.util.Clock
 import androidx.media3.test.utils.robolectric.RobolectricUtil
 import androidx.media3.test.utils.robolectric.TestPlayerRunHelper.run
 import audio.own.core.downloads.DownloadScheduler
@@ -76,7 +75,7 @@ class MisuseTest {
     private val decks = mutableListOf<ExoPlayer>()
     /** The decks' clock: it runs ahead by itself, and a test can move it on by hand. */
     private val clock = FakeClock(true)
-    private val scrobbles = Collections.synchronizedList(mutableListOf<ScrobbleTracker.Event>())
+    private val scrobbles = java.util.concurrent.CopyOnWriteArrayList<ScrobbleTracker.Event>()
 
     @After
     fun close() = closing.asReversed().forEach { it() }
@@ -114,7 +113,7 @@ class MisuseTest {
 
     private fun idle() = ShadowLooper.idleMainLooper()
 
-    private fun until(condition: () -> Boolean) = RobolectricUtil.runMainLooperUntil({ condition() }, RUN_TIMEOUT_MS, Clock.DEFAULT)
+    private fun until(condition: () -> Boolean) = RobolectricUtil.runMainLooperUntil({ condition() }, RUN_TIMEOUT_MS, clock)
 
     @Test
     fun `next, previous, play-pause and the scrubber hammered - it still plays after, and next greys out at the end`() {
@@ -249,7 +248,7 @@ class MisuseTest {
     @Test
     fun `a song just over 30 s - a seek to the end is no listen, half of it heard is one play, however often it is paused`() = runBlocking {
         var now = 0L
-        val sent = Collections.synchronizedList(mutableListOf<Pair<String, Long>>())
+        val sent = java.util.concurrent.CopyOnWriteArrayList<Pair<String, Long>>()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default).also { s -> closing += { s.cancel() } }
         val reporter = PlayReporter(sourceOf = { null }, enabled = { true }, scope = scope, recordPlay = { id, _, heard -> sent += id to heard })
         val tracker = ScrobbleTracker(now = { now }) { event ->
@@ -312,7 +311,7 @@ class MisuseTest {
     /** Serves the tone, slowly when asked, and honours `Range` as a file server does. */
     private class AudioServer(val bytes: ByteArray) : AutoCloseable {
         val server = MockWebServer()
-        val requests: MutableList<RecordedRequest> = Collections.synchronizedList(mutableListOf())
+        val requests: MutableList<RecordedRequest> = java.util.concurrent.CopyOnWriteArrayList()
         @Volatile var slow = false
 
         init {

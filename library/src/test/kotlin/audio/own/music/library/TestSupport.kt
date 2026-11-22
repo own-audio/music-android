@@ -19,7 +19,7 @@ const val SERVER = "srv"
 /** A MockWebServer that answers with [answer] and keeps every request it saw. */
 class StubServer(private val answer: (RecordedRequest) -> MockResponse) : AutoCloseable {
     val server = MockWebServer()
-    val requests: MutableList<RecordedRequest> = Collections.synchronizedList(mutableListOf())
+    val requests: MutableList<RecordedRequest> = java.util.concurrent.CopyOnWriteArrayList()
 
     init {
         server.dispatcher = object : Dispatcher() {

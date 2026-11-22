@@ -18,7 +18,7 @@ import okhttp3.OkHttpClient
  */
 class KitStub(private val answer: (RecordedRequest) -> MockResponse) : AutoCloseable {
     val server = MockWebServer()
-    val requests: MutableList<RecordedRequest> = Collections.synchronizedList(mutableListOf())
+    val requests: MutableList<RecordedRequest> = java.util.concurrent.CopyOnWriteArrayList()
 
     @Volatile var networkUp = true
 

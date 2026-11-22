@@ -30,7 +30,7 @@ import audio.own.musicplayer.R as AppR
 /** A pretend Jellyfin: public info, password sign-in, Quick Connect, the session, libraries. */
 class FakeJellyfin : AutoCloseable {
     val server = MockWebServer()
-    val requests: MutableList<RecordedRequest> = Collections.synchronizedList(mutableListOf())
+    val requests: MutableList<RecordedRequest> = java.util.concurrent.CopyOnWriteArrayList()
 
     /** A copy to search: the server adds to [requests] from its own thread meanwhile. */
     fun seen(): List<RecordedRequest> = synchronized(requests) { requests.toList() }

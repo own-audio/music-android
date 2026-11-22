@@ -36,7 +36,7 @@ import okhttp3.OkHttpClient
  */
 class FakeOwnAudio : AutoCloseable {
     val server = MockWebServer()
-    val requests: MutableList<RecordedRequest> = Collections.synchronizedList(mutableListOf())
+    val requests: MutableList<RecordedRequest> = java.util.concurrent.CopyOnWriteArrayList()
 
     var identity = "srv-1"
     var revision = 17
