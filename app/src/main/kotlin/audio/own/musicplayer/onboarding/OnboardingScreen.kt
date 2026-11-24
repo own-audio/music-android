@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import audio.own.core.designsystem.brand.HeroBackground
 import audio.own.core.designsystem.brand.OwnAudioMarkTribe
 import audio.own.core.designsystem.brand.RotatingWordmark
+import audio.own.core.designsystem.components.AppleSignInButton
 import audio.own.core.designsystem.components.GoogleSignInButton
 import audio.own.core.designsystem.theme.AppBrand
 import audio.own.core.designsystem.theme.LocalPalette
@@ -84,6 +85,7 @@ fun OnboardingContent(
     onConnect: () -> Unit,
     onQuickConnect: () -> Unit,
     onGoogle: () -> Unit,
+    onApple: () -> Unit = {},
 ) {
     val palette = LocalPalette.current
     val links = LocalUriHandler.current
@@ -151,10 +153,12 @@ fun OnboardingContent(
                 TextButton(onClick = onQuickConnect, enabled = state.address.isNotBlank() && !state.busy) {
                     Text(stringResource(R.string.quick_connect))
                 }
-                if (showGoogle && state.googleClientId != null) {
+                val google = showGoogle && state.googleClientId != null
+                if (google || state.appleWeb) {
                     Column(verticalArrangement = Arrangement.spacedBy(Tokens.Spacing.xs), horizontalAlignment = Alignment.CenterHorizontally) {
-                        GoogleSignInButton(onClick = onGoogle, enabled = !state.busy)
-                        Text(stringResource(R.string.google_on_this_server), style = MaterialTheme.typography.bodySmall, color = palette.muted, textAlign = TextAlign.Center)
+                        if (state.appleWeb) AppleSignInButton(onClick = onApple, enabled = !state.busy)
+                        if (google) GoogleSignInButton(onClick = onGoogle, enabled = !state.busy)
+                        Text(stringResource(providersNote(google, state.appleWeb)), style = MaterialTheme.typography.bodySmall, color = palette.muted, textAlign = TextAlign.Center)
                     }
                 }
 

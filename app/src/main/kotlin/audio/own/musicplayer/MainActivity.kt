@@ -64,7 +64,14 @@ class MainActivity : AppCompatActivity() {
         container.sync.liveUpdates.setForeground(true)
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Back from the browser without its answer: Sign in with Apple was closed.
+        container.appleSignIn.appReturned()
+    }
+
     override fun onStop() {
+        container.appleSignIn.appLeft()
         // Live updates only while a screen is open; nothing pushes to a phone in the background.
         container.sync.liveUpdates.setForeground(false)
         container.sync.flushSoon()

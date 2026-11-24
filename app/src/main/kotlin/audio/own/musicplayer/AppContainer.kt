@@ -34,6 +34,9 @@ import kotlinx.coroutines.launch
 import audio.own.musicplayer.player.StackEngine
 import audio.own.musicplayer.servers.ServerDetector
 import audio.own.musicplayer.servers.ServersModel
+import audio.own.musicplayer.apple.AppleSignIn
+import audio.own.musicplayer.apple.FilePendingAppleStore
+import audio.own.kit.ownaudio.AppleWeb
 import audio.own.musicplayer.settings.PlaybackSettingsStore
 import audio.own.music.library.db.CatalogueDatabase
 import androidx.media3.common.util.UnstableApi
@@ -152,6 +155,15 @@ class AppContainer(context: Context) {
             version = versionName,
             userAgent = userAgent,
         ),
+    )
+
+    /** Sign in with Apple through the browser; a sign-in waiting for it outlives the process. */
+    val appleSignIn = AppleSignIn(
+        servers = servers,
+        store = FilePendingAppleStore(File(app.noBackupFilesDir, "apple-sign-in.json")),
+        redirectUri = AppleWeb.redirectUri(app.packageName),
+        log = log,
+        scope = scope,
     )
 
     /**

@@ -71,6 +71,8 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
     implementation(libs.kotlinx.coroutines.android)
+    // Sign in with Apple opens the server's page in a Custom Tab, in both builds.
+    implementation(libs.androidx.browser)
 
     // Sign in with Google: only the play build has Google Play services.
     "playImplementation"(libs.androidx.credentials)

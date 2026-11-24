@@ -14,7 +14,7 @@ description: "What to do when own.audio Music for Android can't reach a server, 
 
 If you changed your password, or signed the phone out from another device, the app says "The
 server no longer accepts this sign-in." Open **Settings**, tap the server, and tap **Sign In
-Again**. If you signed up with Google, sign in the same way. Your downloads and the library on
+Again**. If you signed up with Apple or Google, sign in the same way. Your downloads and the library on
 the phone stay as they are.
 
 ## The server can't be reached
@@ -39,6 +39,13 @@ the phone stay as they are.
   sign in only with a plain password, which the app doesn't send.
 - No **Continue with Google** button: it is only in the Google Play build, and only for an
   own.audio server that offers Google sign-in.
+- No **Continue with Apple** button: the own.audio server doesn't offer Sign in with Apple in the
+  browser. Use your email and password, or set a password with "Forgot password" on the server's
+  web page.
+- "Sign in with Apple opens a web browser, and this device has none": install or turn on a
+  browser (Chrome, Firefox or another), then try again.
+- "That Apple sign-in has expired": the sign-in took too long or was used already. Tap
+  **Continue with Apple** again.
 
 ## A song won't play
 

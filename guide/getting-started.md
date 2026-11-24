@@ -21,12 +21,12 @@ your own.
 
 The card at the top is for someone without a server. own.audio keeps your music for you.
 
-- **Create an own.audio Account**: in the Google Play build, **Continue with Google** is at the
-  top and makes the account on first use. Or fill in **Your Name**, **Email** and a **Password**
+- **Create an own.audio Account**: **Continue with Apple** is at the top, and in the Google Play
+  build **Continue with Google** below it; either makes the account on first use. Or fill in **Your Name**, **Email** and a **Password**
   of at least 12 characters (a few words are fine), then **Create Account**. The app signs in
   straight away, and own.audio emails you a link to confirm the address.
-- **Sign In**: the same for an account you already have, with Google or your **Email** and
-  **Password**.
+- **Sign In**: the same for an account you already have, with Apple, Google or your
+  **Email** and **Password**.
 - **Try the Demo Library**: signs in to a shared own.audio server with sample music, no account
   needed. It is called **own.audio demo** in the app. Remove it in Settings when you add your
   own.
@@ -49,12 +49,17 @@ Your sign-in stays on the phone, encrypted. A Subsonic server gets a one-time to
 the password with each request; Jellyfin and own.audio give the app a token, and the password is
 not kept.
 
-### Sign in with Google
+### Sign in with Apple or Google
 
-In the Google Play build, when the address you typed is an own.audio server that takes Google
-sign-in, **Continue with Google** appears under the form: "Or sign in with the Google account you
-use on this own.audio server." The F-Droid build doesn't have it; use your email and password
-there.
+When the address you typed is an own.audio server that offers them, **Continue with Apple** and
+(in the Google Play build) **Continue with Google** appear under the form, with the note "Or sign
+in with the Apple or Google account you use on this own.audio server." Use the same way you
+signed up.
+
+**Continue with Apple** opens Apple's sign-in page in your browser, in both builds. When you are
+done there, the browser hands you back to the app, which finishes signing in. If you close the
+browser or tap Cancel at Apple, nothing happens and you are back on the same screen. It needs a
+web browser on the phone, and the own.audio server has to offer it.
 
 ### Two-factor sign-in
 

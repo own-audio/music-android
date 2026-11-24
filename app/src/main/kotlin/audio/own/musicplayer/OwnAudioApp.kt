@@ -8,6 +8,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.work.Configuration
 import androidx.work.WorkManager
 import audio.own.core.sync.PeriodicRefresh
+import audio.own.musicplayer.apple.AppleRedirects
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
@@ -15,9 +16,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 @UnstableApi
-class OwnAudioApp : Application(), SingletonImageLoader.Factory, Configuration.Provider {
+class OwnAudioApp : Application(), SingletonImageLoader.Factory, Configuration.Provider, AppleRedirects {
     lateinit var container: AppContainer
         private set
+
+    override fun appleRedirected(code: String?, error: String?, state: String?) = container.appleSignIn.redirected(code, error, state)
 
     override fun onCreate() {
         super.onCreate()

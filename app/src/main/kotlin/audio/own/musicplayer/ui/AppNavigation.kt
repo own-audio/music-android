@@ -28,6 +28,11 @@ import audio.own.musicplayer.account.HouseholdContent
 import audio.own.musicplayer.account.HouseholdViewModel
 import audio.own.musicplayer.account.ListeningContent
 import audio.own.musicplayer.account.ListeningViewModel
+import android.content.ActivityNotFoundException
+import androidx.core.net.toUri
+import androidx.browser.customtabs.CustomTabsIntent
+import audio.own.musicplayer.apple.AppleSignIn
+import audio.own.musicplayer.apple.AppleStatus
 import audio.own.musicplayer.google.GoogleResult
 import audio.own.musicplayer.google.GoogleSignIn
 import audio.own.musicplayer.onboarding.AccountMode
@@ -119,6 +124,7 @@ fun AppRoot(container: AppContainer, openPlayer: MutableStateFlow<Boolean> = Mut
             }
             audio.own.musicplayer.identify.OwnAudioOverlays(container.ownAudio, onError = { actionError = it.userMessage() })
             TwoFactorOverlay(container)
+            AppleBrowser(container.appleSignIn)
             actionError?.let { ErrorAlert(it.text(), onDismiss = { actionError = null }) }
         }
     }
@@ -167,7 +173,7 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
         }
         composable(Routes.ACCOUNT) { entry ->
             val mode = AccountMode.valueOf(entry.arguments?.getString("mode") ?: AccountMode.SIGN_IN.name)
-            val vm = viewModel { OwnAudioAccountViewModel(mode, container.servers, container.log, GoogleSignIn.isAvailable) }
+            val vm = viewModel { OwnAudioAccountViewModel(mode, container.servers, container.log, GoogleSignIn.isAvailable, container.appleSignIn) }
             val state by vm.state.collectAsStateWithLifecycle()
             LaunchedEffect(state.done) { if (state.done) nav.popBackStack(Routes.MAIN, inclusive = false) }
             val google = rememberGoogle(onToken = vm::signInWithGoogle, onFailed = vm::googleFailed)
@@ -180,6 +186,7 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
                 onPassword = vm::setPassword,
                 onSubmit = vm::submit,
                 onGoogle = { state.googleClientId?.let(google) },
+                onApple = vm::signInWithApple,
             )
         }
         composable(Routes.SETTINGS) {
@@ -211,7 +218,7 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
             )
         }
         composable(Routes.ADD_SERVER) {
-            val vm = viewModel { ServerFormViewModel(container.servers, container.log, GoogleSignIn.isAvailable) }
+            val vm = viewModel { ServerFormViewModel(container.servers, container.log, GoogleSignIn.isAvailable, apple = container.appleSignIn) }
             val state by vm.state.collectAsStateWithLifecycle()
             LaunchedEffect(state.done) { if (state.done) nav.popBackStack() }
             val google = rememberGoogle(onToken = vm::signInWithGoogle, onFailed = vm::googleFailed)
@@ -226,6 +233,7 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
                 onConnect = vm::connect,
                 onQuickConnect = vm::quickConnect,
                 onGoogle = { state.googleClientId?.let(google) },
+                onApple = vm::signInWithApple,
             )
             if (state.quickConnecting) QuickConnectOverlay(container, state.address, state.name, state.quickConnectAttempt, onClose = vm::closeQuickConnect)
         }
@@ -308,7 +316,7 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
         }
         composable(Routes.SIGN_IN_AGAIN) { entry ->
             val id = arg(entry)
-            val vm = viewModel { SignInAgainViewModel(id, container.servers, container.log, GoogleSignIn.isAvailable) }
+            val vm = viewModel { SignInAgainViewModel(id, container.servers, container.log, GoogleSignIn.isAvailable, container.appleSignIn) }
             val state by vm.state.collectAsStateWithLifecycle()
             LaunchedEffect(state.done) { if (state.done) nav.popBackStack() }
             val google = rememberGoogle(onToken = vm::signInWithGoogle, onFailed = vm::googleFailed)
@@ -320,6 +328,7 @@ private fun AppNavHost(container: AppContainer, nav: NavHostController, onError:
                 onPassword = vm::setPassword,
                 onSubmit = vm::submit,
                 onGoogle = { state.googleClientId?.let(google) },
+                onApple = vm::signInWithApple,
             )
         }
         composable(Routes.FAMILY) { entry ->
@@ -375,7 +384,7 @@ private fun accent(container: AppContainer): AccentChoice {
 
 @Composable
 private fun WelcomeRoute(container: AppContainer, onAccount: (AccountMode) -> Unit) {
-    val vm = viewModel { ServerFormViewModel(container.servers, container.log, GoogleSignIn.isAvailable) }
+    val vm = viewModel { ServerFormViewModel(container.servers, container.log, GoogleSignIn.isAvailable, apple = container.appleSignIn) }
     val state by vm.state.collectAsStateWithLifecycle()
     val google = rememberGoogle(onToken = vm::signInWithGoogle, onFailed = vm::googleFailed)
     OnboardingContent(
@@ -391,6 +400,7 @@ private fun WelcomeRoute(container: AppContainer, onAccount: (AccountMode) -> Un
         onConnect = vm::connect,
         onQuickConnect = vm::quickConnect,
         onGoogle = { state.googleClientId?.let(google) },
+        onApple = vm::signInWithApple,
     )
     if (state.quickConnecting) QuickConnectOverlay(container, state.address, state.name, state.quickConnectAttempt, onClose = vm::closeQuickConnect)
 }
@@ -437,6 +447,24 @@ private fun TwoFactorOverlay(container: AppContainer) {
             val vm = viewModel(key = pending.mfaToken) { TwoFactorViewModel(container.servers) }
             val state by vm.state.collectAsStateWithLifecycle()
             TwoFactorContent(state, onCode = vm::setCode, onCheck = vm::check, onCancel = vm::cancel)
+        }
+    }
+}
+
+/** Opens Sign in with Apple's page in a Custom Tab once the server named it; the redirect brings the answer back. */
+@Composable
+private fun AppleBrowser(apple: AppleSignIn) {
+    val status by apple.status.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val open = status as? AppleStatus.Browser
+    LaunchedEffect(open) {
+        if (open == null || open.opened || open.url.isEmpty()) return@LaunchedEffect
+        // Marked first: the app stops as the tab opens, and coming back unanswered is a cancel.
+        apple.opened()
+        try {
+            CustomTabsIntent.Builder().setShowTitle(true).build().launchUrl(context.findActivity() ?: context, open.url.toUri())
+        } catch (e: ActivityNotFoundException) {
+            apple.noBrowser()
         }
     }
 }

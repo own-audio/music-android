@@ -16,6 +16,8 @@ It talks only to:
   Server**, what you played;
 - **the Cover Art Archive** (coverartarchive.org), only when you identify songs on an own.audio
   server, for the covers of the candidate releases;
+- **Apple**, only if you choose **Continue with Apple** for an own.audio server. Apple's page
+  opens in your browser; the app gets nothing from Apple directly, the own.audio server does;
 - **Google**, only in the Google Play build and only if you choose **Continue with Google** for
   an own.audio server. The F-Droid build has no Google code.
 

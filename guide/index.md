@@ -55,7 +55,7 @@ that does nothing.
 | **Instant Mix** | No | No | Yes |
 | Choosing one of several music libraries | No | No | Yes |
 | **Quick Connect** sign-in | No | No | Yes |
-| Sign in with Google, two-factor codes | Where the server offers it | No | No |
+| Sign in with Apple or Google, two-factor codes | Where the server offers it | No | No |
 | Smart playlists | Yes | No | No |
 | Family sharing, your own covers | Yes | No | No |
 | Concerts (a whole show in one file) | Where the server keeps them | No | No |

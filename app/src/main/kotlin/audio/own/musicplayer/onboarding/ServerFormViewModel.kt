@@ -3,6 +3,8 @@ package audio.own.musicplayer.onboarding
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import audio.own.musicplayer.app.AppLog
+import audio.own.musicplayer.apple.AppleSignIn
+import audio.own.musicplayer.apple.followApple
 import audio.own.musicplayer.app.UiText
 import audio.own.musicplayer.app.userMessage
 import audio.own.musicplayer.servers.ServersModel
@@ -25,6 +27,9 @@ data class ServerFormState(
     val error: UiText? = null,
     /** The web client id when the own.audio server at the typed address offers Google. */
     val googleClientId: String? = null,
+    /** The own.audio server at the typed address runs Sign in with Apple in the browser. */
+    val appleWeb: Boolean = false,
+    val appleWorking: Boolean = false,
     /** A sign-in finished: the form closes (Add Server) or the tabs take over (welcome). */
     val done: Boolean = false,
     /** The Quick Connect screen is open over the form, for the typed address. */
@@ -33,8 +38,8 @@ data class ServerFormState(
     val quickConnectAttempt: Int = 0,
 ) {
     /** Jellyfin allows accounts with no password, so an empty one is fine. */
-    val canConnect: Boolean get() = address.isNotBlank() && username.isNotEmpty() && !connecting && !tryingDemo
-    val busy: Boolean get() = connecting || tryingDemo
+    val canConnect: Boolean get() = address.isNotBlank() && username.isNotEmpty() && !busy
+    val busy: Boolean get() = connecting || tryingDemo || appleWorking
 }
 
 /** The "connect your own server" form of the welcome screen and of Add Server. */
@@ -43,6 +48,7 @@ class ServerFormViewModel(
     private val log: AppLog,
     private val googleAvailable: Boolean,
     private val lookupDelayMs: Long = 600,
+    private val apple: AppleSignIn? = null,
 ) : ViewModel() {
     private val _state = MutableStateFlow(ServerFormState())
     val state: StateFlow<ServerFormState> = _state.asStateFlow()
@@ -50,17 +56,27 @@ class ServerFormViewModel(
 
     init {
         viewModelScope.launch { servers.signedIn.collect { _state.update { it.copy(done = true, connecting = false, quickConnecting = false) } } }
+        apple?.let {
+            viewModelScope.followApple(
+                it, AppleSignIn.ORIGIN_FORM,
+                onBusy = { busy -> _state.update { s -> s.copy(appleWorking = busy) } },
+                onError = { text -> _state.update { s -> s.copy(error = text) } },
+                onDone = { _state.update { s -> s.copy(done = true) } },
+            )
+        }
     }
 
     fun setAddress(value: String) {
-        _state.update { it.copy(address = value, googleClientId = null) }
+        _state.update { it.copy(address = value, googleClientId = null, appleWeb = false) }
         lookup?.cancel()
-        if (!googleAvailable || value.trim().length <= 3) return
-        // Asked once typing pauses: whether an own.audio server answers there, and whether it takes Google.
+        if ((!googleAvailable && apple == null) || value.trim().length <= 3) return
+        // Asked once typing pauses: whether an own.audio server answers there, and whether it takes Google or Apple.
         lookup = viewModelScope.launch {
             delay(lookupDelayMs)
-            val id = servers.googleClientId(value)
-            _state.update { if (it.address == value) it.copy(googleClientId = id) else it }
+            val options = servers.signInOptions(value)
+            _state.update {
+                if (it.address != value) it else it.copy(googleClientId = options.googleClientId.takeIf { googleAvailable }, appleWeb = apple != null && options.appleWeb)
+            }
         }
     }
 
@@ -84,6 +100,15 @@ class ServerFormViewModel(
     fun signInWithGoogle(idToken: String) {
         val s = _state.value
         run({ it.copy(connecting = true) }, { it.copy(connecting = false) }) { servers.signInWithGoogle(s.address, idToken, s.name) }
+    }
+
+    /** Sign in with Apple to the own.audio server at the typed address, in the browser. */
+    fun signInWithApple() {
+        val apple = apple ?: return
+        val s = _state.value
+        if (s.address.isBlank() || s.busy) return
+        _state.update { it.copy(error = null) }
+        apple.begin(s.address, s.name, null, AppleSignIn.ORIGIN_FORM)
     }
 
     /** Jellyfin's Quick Connect, for the typed address: its screen opens over the form. */

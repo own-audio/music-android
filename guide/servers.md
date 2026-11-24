@@ -23,8 +23,8 @@ From top to bottom:
   VPN** or **Connected · Internet**, with the address in use. **Check Now** asks the server
   again and says what it found: it answers and accepts the sign-in, it refuses the sign-in, or
   no address answers.
-- **Account**: **Sign In Again** asks for the password again (or Google, if that is how you
-  signed up), for example after you changed the password. Your downloads and the library on the
+- **Account**: **Sign In Again** asks for the password again (or Apple or Google, if that is how
+  you signed up), for example after you changed the password. Your downloads and the library on the
   phone stay as they are. On own.audio, **Delete Account…** deletes your account on that server
   for good, with everything you added to it: music, audiobooks, podcasts, playlists and your
   listening history. What others in your family added stays with them. The app asks for your
