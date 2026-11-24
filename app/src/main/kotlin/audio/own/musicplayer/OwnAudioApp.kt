@@ -46,6 +46,7 @@ class OwnAudioApp : Application(), SingletonImageLoader.Factory, Configuration.P
         container.scope.launch { container.downloads.reconcile() }
         container.sync.start()
         container.startWidget()
+        container.scope.launch { audio.own.musicplayer.widget.WidgetPreviews.publish(this@OwnAudioApp, container.versionCode) }
         PeriodicRefresh.schedule(WorkManager.getInstance(this))
         // Offline Mode, "Downloaded Only" on mobile data, or no network at all.
         container.scope.launch {

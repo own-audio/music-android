@@ -25,7 +25,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** What the Recently Played widget is given, and that it is written only when it changes. */
+/** What the widgets are given, and that it is written only when it changes. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class WidgetSnapshotTest {
@@ -45,19 +45,21 @@ class WidgetSnapshotTest {
     )
 
     @Test
-    fun `where you left off first, then the albums played last without the one playing, three at most`() {
+    fun `where you left off first, then the albums played last for the shelf`() {
         val picked = WidgetSnapshot.pick(track, albums, "s").map { it.entry }
-        assertEquals(listOf("So What", "Blue Train", "A Love Supreme"), picked.map { it.title })
+        assertEquals(listOf("So What", "Kind of Blue", "Blue Train", "A Love Supreme", "Maiden Voyage"), picked.map { it.title })
         assertEquals(WidgetSnapshot.Kind.RESUME, picked[0].kind)
         assertEquals("Miles Davis", picked[0].subtitle)
         assertEquals(MusicLinks.resume(), picked[0].link)
-        assertEquals(MusicLinks.Link.Play(MusicLinks.Kind.ALBUM, "s|bt"), MusicLinks.parse(picked[1].link))
-        assertEquals(WidgetSnapshot.coverName("s|bt-cover"), picked[1].cover)
+        assertEquals(MusicLinks.Link.Play(MusicLinks.Kind.ALBUM, "s|bt"), MusicLinks.parse(picked[2].link))
+        assertEquals(WidgetSnapshot.coverName("s|bt-cover"), picked[2].cover)
     }
 
     @Test
     fun `nothing played yet, or another server's albums, give nothing of theirs`() {
-        assertEquals(listOf("Kind of Blue", "Blue Train", "A Love Supreme"), WidgetSnapshot.pick(null, albums, "s").map { it.entry.title })
+        assertEquals(listOf("Kind of Blue", "Blue Train", "A Love Supreme", "Maiden Voyage"), WidgetSnapshot.pick(null, albums, "s").map { it.entry.title })
+        val many = (1..20).map { WidgetSnapshot.album(Album("s|a$it", "Album $it")) }
+        assertEquals(WidgetSnapshot.SHELF_MAX, WidgetSnapshot.pick(null, many, "s").size)
         assertEquals(emptyList<String>(), WidgetSnapshot.pick(null, albums, "other").map { it.entry.title })
     }
 
@@ -68,10 +70,10 @@ class WidgetSnapshotTest {
         val jpeg: suspend (String) -> ByteArray? = { id -> asked += id; if (id == "s|ls") null else byteArrayOf(1, 2, 3) }
         val picked = WidgetSnapshot.pick(track, albums, "s")
         assertTrue(store.save(picked, 1, jpeg))
-        assertEquals(listOf("s|kob", "s|bt-cover", "s|ls"), asked)
+        assertEquals(listOf("s|kob", "s|bt-cover", "s|ls", "s|mx"), asked)
         val saved = store.load()!!.entries
         assertTrue(store.cover(saved[0].cover!!).exists())
-        assertNull("a cover that couldn't be made is left out", saved[2].cover)
+        assertNull("a cover that couldn't be made is left out", saved[3].cover)
         assertFalse("the same entries again write nothing", store.save(picked, 2, jpeg))
         assertEquals("a cover on the device isn't made again", 1, asked.count { it == "s|kob" })
         assertTrue(store.save(WidgetSnapshot.pick(null, albums.drop(2), "s"), 3, jpeg))
@@ -99,7 +101,7 @@ class WidgetSnapshotTest {
         try {
             updater.start(scope)
             server.value = "s"
-            eventually(20_000) { store.load()?.entries?.size == 3 }
+            eventually(20_000) { store.load()?.entries?.size == 4 }
             assertTrue(source.calls.any { it.startsWith("albums RECENTLY_PLAYED ${WidgetSnapshot.ALBUMS_ASKED}") })
             playing.value = track
             eventually(20_000) { store.load()?.entries?.firstOrNull()?.kind == WidgetSnapshot.Kind.RESUME }

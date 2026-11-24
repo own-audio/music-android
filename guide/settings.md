@@ -57,7 +57,7 @@ Crossfade and the equalizer are also in the player's tools row. See [The player]
 ## Accent Color
 
 The color of buttons, links and what's playing: **App Color** (the app's pink, the default) or
-one of the other colors. The icon and the widget keep the app's color.
+one of the other colors. The icon and the widgets keep the app's color.
 
 ## Report Plays to the Server
 

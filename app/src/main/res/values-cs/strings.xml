@@ -473,8 +473,12 @@
     <string name="link_other_server">To je na jiném serveru. Nejdřív se na něj přepněte v Nastavení.</string>
     <string name="voice_not_found">V knihovně není nic s názvem „%1$s“.</string>
     <string name="widget_name">Naposledy přehrané</string>
-    <string name="widget_description">Kde jste skončili a alba a playlisty, které hrály naposledy.</string>
+    <string name="widget_description">Alba, která hrála naposledy, jako obaly; klepnutím jedno pustíte.</string>
     <string name="widget_nothing_played">Zatím nic nehrálo</string>
-    <string name="widget_continue">Pokračovat · %1$s</string>
+    <string name="widget_continue_label">Pokračovat</string>
+    <string name="widget_player_name">Přehrávač</string>
+    <string name="widget_player_description">Skladba, která hraje, s předchozí, přehrát nebo pozastavit a další.</string>
+    <string name="widget_now_playing_name">Právě hraje</string>
+    <string name="widget_now_playing_description">Velký obal, průběh a ovládání; když nic nehraje, místo, kde jste skončili.</string>
     <string name="subsonic_addresses_footer">Servery Subsonic neříkají, jaké mají adresy, proto je přidejte sem; aplikace každou ověří vaším přihlášením.</string>
 </resources>

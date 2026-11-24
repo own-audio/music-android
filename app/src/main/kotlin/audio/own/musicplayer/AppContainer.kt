@@ -54,14 +54,17 @@ import kotlinx.coroutines.withContext
 import audio.own.core.servers.CompositeId
 import kotlinx.coroutines.SupervisorJob
 import okhttp3.OkHttpClient
-import androidx.glance.appwidget.updateAll
 import audio.own.music.library.MusicSource
 import audio.own.music.library.model.Song
 import audio.own.musicplayer.auto.CarArtwork
 import audio.own.musicplayer.downloads.OfflineAwareSource
 import audio.own.musicplayer.downloads.OfflineLibrary
 import audio.own.musicplayer.platform.PlayRequests
-import audio.own.musicplayer.widget.RecentlyPlayedWidget
+import audio.own.musicplayer.widget.PlayingKey
+import audio.own.musicplayer.widget.WidgetData
+import audio.own.musicplayer.widget.WidgetPlayer
+import audio.own.musicplayer.widget.WidgetRedraw
+import audio.own.musicplayer.widget.WidgetSnapshot
 import audio.own.musicplayer.widget.WidgetStore
 import audio.own.musicplayer.widget.WidgetUpdater
 import audio.own.player.music.Track
@@ -258,7 +261,12 @@ class AppContainer(context: Context) {
             recordPlay = { id, started, heard -> sync.recordPlay(id, started, heard) },
             onTrackStarted = { id -> if (downloads.isDownloaded(id)) scope.launch { downloads.notePlayed(id) } },
         )
-        scope.launch { stack.music.state.collect { widgetTrack.value = it.currentTrack } }
+        scope.launch {
+            stack.music.state.collect { state ->
+                widgetTrack.value = state.currentTrack
+                widgetPlaying.value = state.currentTrack?.let { PlayingKey(it.id, state.isPlaying) }
+            }
+        }
         stack
     }
     val playback: PlaybackStack by playbackLazy
@@ -313,17 +321,41 @@ class AppContainer(context: Context) {
      * last queue's, read from its file so the widget needs no player.
      */
     private val widgetTrack = MutableStateFlow<Track?>(null)
+    private val widgetPlaying = MutableStateFlow<PlayingKey?>(null)
 
     val widgets = WidgetUpdater(
-        store = WidgetStore(RecentlyPlayedWidget.folder(app)),
+        store = WidgetStore(WidgetData.folder(app)),
         track = widgetTrack,
         activeServerId = servers.state.map { if (it.loaded) it.activeId else null },
         source = { library.activeSource },
         isOffline = { offline.isOffline },
         jpeg = { coverId -> CarArtwork.smallJpeg(app, coverId, WIDGET_COVER_PX) },
-        redraw = { RecentlyPlayedWidget().updateAll(app) },
+        redraw = { WidgetRedraw.all(app) },
+        playing = widgetPlaying,
+        redrawPlayers = { WidgetRedraw.players(app) },
         log = log,
     )
+
+    /**
+     * The song in the player for the widgets, with where it is; null when no player is built (the
+     * widgets then offer where you left off), so drawing a widget never builds one.
+     */
+    suspend fun widgetPlayer(): WidgetPlayer? {
+        if (!playbackLazy.isInitialized()) return null
+        return withContext(Dispatchers.Main) {
+            val state = playback.music.state.value
+            val track = state.currentTrack ?: return@withContext null
+            val player = playback.music.player
+            WidgetPlayer(
+                title = track.title,
+                artist = track.artist.orEmpty(),
+                cover = track.artworkId?.let(WidgetSnapshot::coverName),
+                isPlaying = state.isPlaying,
+                positionMs = player.currentPosition.coerceAtLeast(0),
+                durationMs = player.duration.takeIf { it > 0 } ?: ((track.durationSecs ?: 0) * 1000L),
+            )
+        }
+    }
 
     fun startWidget() {
         scope.launch(Dispatchers.IO) {
@@ -355,7 +387,8 @@ class AppContainer(context: Context) {
     private fun appLocale(): Locale = AppCompatDelegate.getApplicationLocales()[0] ?: Locale.getDefault()
 }
 
-private const val WIDGET_COVER_PX = 160
+/** The widgets' pictures: the big player's cover is about 150 dp across. */
+private const val WIDGET_COVER_PX = 320
 
 /** Offline at all; [byChoice] when Offline Mode or "Downloaded Only" on mobile data made it so. */
 data class OfflineState(val isOffline: Boolean = false, val byChoice: Boolean = false, val offlineMode: Boolean = false)

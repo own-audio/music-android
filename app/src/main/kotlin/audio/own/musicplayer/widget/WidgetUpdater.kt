@@ -7,8 +7,10 @@ import audio.own.player.music.Track
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -16,10 +18,12 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 
 /**
- * Keeps the widget's snapshot in step with the player and the albums played last: a second after
- * a change, so a burst of them writes once, and only when the entries differ ([redraw] then).
- * The song playing follows the player; the albums are asked for by [refreshAlbums], at launch,
- * on another server and from the periodic refresh, as the iOS app's `refreshWidget(fetch:)`.
+ * Keeps the widgets in step with the player and the albums played last. The snapshot is written a
+ * second after a change, so a burst of them writes once, and only when the entries differ
+ * ([redraw] then, every widget). The players are redrawn ([redrawPlayers]) when the song or
+ * play/pause changes and, for the progress, once a minute while playing: never more often, and
+ * not at all while paused. The albums are asked for by [refreshAlbums], at launch, on another
+ * server and from the periodic refresh, as the iOS app's `refreshWidget(fetch:)`.
  */
 class WidgetUpdater(
     private val store: WidgetStore,
@@ -29,6 +33,10 @@ class WidgetUpdater(
     private val isOffline: () -> Boolean,
     private val jpeg: suspend (String) -> ByteArray?,
     private val redraw: suspend () -> Unit,
+    /** The song playing and whether it plays; null before the player is built. */
+    private val playing: Flow<PlayingKey?> = kotlinx.coroutines.flow.flowOf(null),
+    private val redrawPlayers: suspend () -> Unit = {},
+    private val tickMs: Long = 60_000,
     private val log: AppLog? = null,
     private val now: () -> Long = System::currentTimeMillis,
     private val debounceMs: Long = 1_000,
@@ -56,8 +64,27 @@ class WidgetUpdater(
                     }
                 }
         }
+        scope.launch {
+            playing.distinctUntilChanged().debounce(PLAYER_DEBOUNCE_MS).collectLatest { key ->
+                drawPlayers()
+                while (key?.isPlaying == true) {
+                    delay(tickMs)
+                    drawPlayers()
+                }
+            }
+        }
         // The servers loaded, or another one chosen: its albums, not the last one's.
         scope.launch { activeServerId.distinctUntilChanged().filterNotNull().collect { refreshAlbums(force = true) } }
+    }
+
+    private suspend fun drawPlayers() {
+        try {
+            redrawPlayers()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            log?.error("widget", "the player widgets weren't drawn: ${error.javaClass.simpleName}")
+        }
     }
 
     private var fetchedAt: Long? = null
@@ -86,5 +113,11 @@ class WidgetUpdater(
 
     private companion object {
         const val MIN_INTERVAL_MS = 60_000L
+
+        /** Play then pause at once, or a skip through songs, draws once. */
+        const val PLAYER_DEBOUNCE_MS = 250L
     }
 }
+
+/** What the player widgets redraw for: another song, or play/pause. */
+data class PlayingKey(val trackId: String, val isPlaying: Boolean)

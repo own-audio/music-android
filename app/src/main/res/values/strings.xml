@@ -455,8 +455,14 @@
     <string name="link_other_server">That is on another server. Switch to it in Settings first.</string>
     <string name="voice_not_found">Nothing in your library is called “%1$s”.</string>
     <string name="widget_name">Recently Played</string>
-    <string name="widget_description">Where you left off, and the albums and playlists you played last.</string>
+    <string name="widget_description">The albums you played last, as covers; tap one to play it.</string>
     <string name="widget_nothing_played">Nothing played yet</string>
-    <string name="widget_continue">Continue · %1$s</string>
+    <string name="widget_continue_label">Continue</string>
+    <string name="widget_player_name">Player</string>
+    <string name="widget_player_description">The song playing, with previous, play or pause, and next.</string>
+    <string name="widget_now_playing_name">Now Playing</string>
+    <string name="widget_now_playing_description">A large cover, the progress and the controls; where you left off when nothing plays.</string>
+    <string name="widget_sample_title" translatable="false">Blue Hour</string>
+    <string name="widget_sample_subtitle" translatable="false">Mira Lane</string>
     <string name="subsonic_addresses_footer">Subsonic servers don\'t say which addresses they have, so add them here; the app checks each one with your sign-in.</string>
 </resources>

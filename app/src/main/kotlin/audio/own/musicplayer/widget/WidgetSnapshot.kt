@@ -11,8 +11,8 @@ import java.security.MessageDigest
 import kotlinx.serialization.Serializable
 
 /**
- * What the Recently Played widget shows: the app writes it to `filesDir/widget/` whenever its
- * entries change, the widget only reads. Pictures sit next to it as small JPEGs, so the widget
+ * What the widgets show besides the song playing: where you left off and the albums played last.
+ * The app writes it to `filesDir/widget/` whenever its entries change, the widgets only read. Pictures sit next to it as small JPEGs, so the widget
  * needs neither the network nor a sign-in. Ported from the iOS app's `WidgetSnapshot`.
  */
 @Serializable
@@ -42,22 +42,22 @@ data class WidgetSnapshot(val entries: List<Entry>, val atEpochMs: Long = 0) {
     data class Picked(val entry: Entry, val coverId: String?)
 
     companion object {
-        /** The medium widget shows three; the small one the first. */
-        const val MAX_ENTRIES = 3
+        /** The shelf's covers at most: three rows of four on a large widget. */
+        const val SHELF_MAX = 12
 
-        /** How many recently played albums are asked for: one may be the album playing. */
-        const val ALBUMS_ASKED = 4
+        /** How many recently played albums are asked for. */
+        const val ALBUMS_ASKED = SHELF_MAX
 
         /**
          * Where you left off ([current], the song in the player or the last queue's), then the
-         * albums played last on the active server, without the one playing; three at most.
+         * albums played last on the active server, for the shelf.
          */
         fun pick(current: Track?, albums: List<Picked>, activeServerId: String?): List<Picked> {
             val resume = current?.let { track ->
                 Picked(Entry(track.id, Kind.RESUME, track.title, track.artist.orEmpty(), track.artworkId?.let(::coverName)), track.artworkId)
             }
-            val recent = albums.filter { CompositeId.split(it.entry.id)?.first == activeServerId && it.entry.title != current?.album }
-            return (listOfNotNull(resume) + recent).take(MAX_ENTRIES)
+            val recent = albums.filter { CompositeId.split(it.entry.id)?.first == activeServerId }.take(SHELF_MAX)
+            return listOfNotNull(resume) + recent
         }
 
         fun album(album: Album): Picked {
@@ -65,8 +65,9 @@ data class WidgetSnapshot(val entries: List<Entry>, val atEpochMs: Long = 0) {
             return Picked(Entry(album.id, Kind.ALBUM, album.name, album.artist.orEmpty(), coverName(coverId)), coverId)
         }
 
+        /** The `@2` names the larger pictures of the redesigned widgets, so the small old ones are made again. */
         fun coverName(coverId: String): String =
-            MessageDigest.getInstance("SHA-1").digest(coverId.toByteArray()).joinToString("") { "%02x".format(it) }.take(20) + ".jpg"
+            MessageDigest.getInstance("SHA-1").digest("$coverId@2".toByteArray()).joinToString("") { "%02x".format(it) }.take(20) + ".jpg"
     }
 }
 

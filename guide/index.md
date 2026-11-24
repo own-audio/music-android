@@ -72,7 +72,7 @@ that does nothing.
 - [Identify (own.audio)](identify.md)
 - [Servers and family](servers.md): the server's page, addresses, family, devices, listening
 - [Settings](settings.md)
-- [Android Auto, the widget and the notification](system.md)
+- [Android Auto, the widgets and the notification](system.md)
 - [Privacy](privacy.md)
 - [Troubleshooting](troubleshooting.md)
 

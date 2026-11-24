@@ -1,10 +1,10 @@
 ---
-title: Android Auto, the widget and the notification
+title: Android Auto, the widgets and the notification
 nav_order: 10
-description: "own.audio Music outside the app on Android: the media notification, the output switcher, Android Auto, the Recently Played widget, the shortcut and Google Assistant."
+description: "own.audio Music outside the app on Android: the media notification, the output switcher, Android Auto, the Player, Now Playing and Recently Played widgets, the shortcut and Google Assistant."
 ---
 
-# Android Auto, the widget and the notification
+# Android Auto, the widgets and the notification
 {: .no_toc }
 
 1. TOC
@@ -28,12 +28,23 @@ In the car, own.music shows **Recently Played**, **Recently Added**, **Downloads
 **Playlists**, **Artists** and **Favorites**, and you can search. Albums and playlists play from
 the first song. If no server is added, it says **Add a server on your phone**.
 
-## Widget
+## Widgets
 
-The **Recently Played** widget shows where you left off ("Continue · …") and the albums and
-playlists you played last: one on the small widget, three on the medium one. Tap one to open the
-app and play it. Add it the usual way: touch and hold the home screen, choose **Widgets**, then
-own.music.
+own.music has three home-screen widgets. They take the colors of your wallpaper (Android 12 and
+later), with the play button and the progress in the app's color, and follow light and dark mode.
+
+- **Player** (4×1): the cover, the song and the artist, with **Previous**, **Play**/**Pause** and
+  **Next**. Tap the song to open the player. On a narrow strip only **Play**/**Pause** stays;
+  stretched taller, it becomes the large player.
+- **Now Playing** (4×2): a large cover, the song, the artist, how far the song has played, and the
+  same buttons. When nothing is in the player, it shows **Continue** with the song you played last;
+  **Play** goes on with it.
+- **Recently Played** (4×2): the albums you played last as covers, as many as fit the widget's
+  size. Tap one to open the app and play it.
+
+The buttons work without opening the app. While a song plays, the progress moves on about once a
+minute. Add a widget the usual way: touch and hold the home screen, choose **Widgets**, then
+own.music. A Recently Played widget you added before this version becomes the new one.
 
 ## Shortcut
 
