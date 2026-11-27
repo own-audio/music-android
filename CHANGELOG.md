@@ -5,6 +5,10 @@ All notable changes to own.audio Music for Android. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-27
+
+First release on Google Play (closed test).
+
 - On tablets and wide windows (tabs as a rail) the mini player sits above the gesture handle or the navigation buttons instead of under them; on phones nothing moves. The player's tools take equal widths, as many whole ones as fit with the rest scrolled to, and their names shrink to fit: Czech "Ekvalizér" was cut at the screen's edge, and larger text no longer cuts a name either.
 - Google Play store graphics in English and Czech: the feature graphic, six phone screenshots with the iOS app's headlines, and four 7" and four 10" tablet screenshots, all from the public demo library. `tools/store-screenshots.py` takes them on emulators, `tools/store-graphics.py` frames them.
 - Home-screen widgets redesigned: three instead of one. **Player** (4×1: cover, song, artist, previous, play/pause, next), **Now Playing** (4×2: large cover, progress and the same buttons; **Continue** with the last song when nothing is in the player) and **Recently Played** (4×2: the albums played last as a grid of covers that fills the widget's size). Wallpaper colours (Material You) with the play button and progress in the app's colour, the launcher's corner radius, 14–16 sp titles, 48 dp buttons, responsive sizes, picker previews (a preview layout, an image below Android 12, generated previews from Android 15) and English and Czech descriptions. The buttons work without opening the app: play goes to the media service as the notification's does (and resumes the last queue), pause, previous and next go through a media controller. The players are redrawn on play, pause and another song and once a minute while playing. A Recently Played widget placed before keeps working as the new one. Adds `glance-material3` and, for tests, `glance-appwidget-testing` (docs/dependencies.md).
