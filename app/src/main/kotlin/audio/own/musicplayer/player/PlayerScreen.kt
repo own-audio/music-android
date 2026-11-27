@@ -103,6 +103,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.unit.min
 import audio.own.core.designsystem.components.CoverArt
 import audio.own.core.designsystem.theme.AppBrand
@@ -455,48 +462,60 @@ private fun Tools(ui: PlayerUi, onShuffle: () -> Unit, onRepeat: () -> Unit, onS
     val context = LocalContext.current
     val hasTrack = ui.state.currentTrack != null
     val repeat = ui.state.repeatMode
-    Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = Tokens.Spacing.screenEdge),
-        horizontalArrangement = Arrangement.spacedBy(Tokens.Spacing.md, Alignment.CenterHorizontally),
-    ) {
-        Tool(Icons.Filled.FormatQuote, stringResource(R.string.lyrics), enabled = hasTrack) { onSheet(PlayerSheet.LYRICS) }
-        val on = stringResource(R.string.state_on)
-        val off = stringResource(R.string.state_off)
-        Tool(Icons.Filled.Shuffle, stringResource(R.string.shuffle), active = ui.state.isShuffled, state = if (ui.state.isShuffled) on else off, onClick = onShuffle)
-        val repeatState = stringResource(
-            when (repeat) {
-                RepeatMode.OFF -> R.string.repeat_off
-                RepeatMode.ALL -> R.string.repeat_all
-                RepeatMode.ONE -> R.string.repeat_one
-            },
-        )
-        Tool(if (repeat == RepeatMode.ONE) Icons.Filled.RepeatOne else Icons.Filled.Repeat, stringResource(R.string.repeat), active = repeat != RepeatMode.OFF, state = repeatState, onClick = onRepeat)
-        Tool(Icons.Filled.Waves, stringResource(R.string.crossfade), active = ui.crossfadeOn, state = if (ui.crossfadeOn) on else off) { onSheet(PlayerSheet.CROSSFADE) }
-        Tool(Icons.Filled.Equalizer, stringResource(R.string.eq), active = ui.equalizerOn, state = if (ui.equalizerOn) on else off) { onSheet(PlayerSheet.EQUALIZER) }
-        Tool(Icons.Filled.Bedtime, stringResource(R.string.sleep), active = ui.sleep.isActive, state = if (ui.sleep.isActive) on else off) { onSheet(PlayerSheet.SLEEP) }
-        Tool(Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.queue), enabled = hasTrack) { onSheet(PlayerSheet.QUEUE) }
-        if (ui.canIdentify) {
-            // The same two actions as a song's menu, for the song playing.
-            var menu by remember { mutableStateOf(false) }
-            Box {
-                Tool(Icons.Filled.ManageSearch, stringResource(R.string.identify)) { menu = true }
-                androidx.compose.material3.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    androidx.compose.material3.DropdownMenuItem(
-                        text = { Text(stringResource(R.string.identify_ellipsis)) },
-                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                        onClick = { menu = false; onIdentify() },
-                    )
-                    androidx.compose.material3.DropdownMenuItem(
-                        text = { Text(stringResource(R.string.undo_identify_ellipsis)) },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null) },
-                        onClick = { menu = false; onUndoIdentify() },
-                    )
+    // Equal widths, as many whole tools as fit, the rest scrolled to: a tool cut at the screen's
+    // edge read "Ekvaliz" in Czech. The scroll is clipped inside the screen edge, so none is cut
+    // at rest. Its labels shrink to fit their width instead.
+    val count = if (ui.canIdentify) 9 else 8
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = Tokens.Spacing.screenEdge)) {
+        // Past 130 % text, fewer and wider tools: shrinking alone would cut "Crossfade" at 200 %.
+        val minWidth = MIN_TOOL_WIDTH * (LocalDensity.current.fontScale / 1.3f).coerceAtLeast(1f)
+        val toolWidth = maxWidth / (maxWidth / minWidth).toInt().coerceIn(1, count)
+        Row(Modifier.testTag("player.tools").horizontalScroll(rememberScrollState())) {
+            CompositionLocalProvider(LocalToolWidth provides toolWidth) {
+                Tool(Icons.Filled.FormatQuote, stringResource(R.string.lyrics), enabled = hasTrack) { onSheet(PlayerSheet.LYRICS) }
+                val on = stringResource(R.string.state_on)
+                val off = stringResource(R.string.state_off)
+                Tool(Icons.Filled.Shuffle, stringResource(R.string.shuffle), active = ui.state.isShuffled, state = if (ui.state.isShuffled) on else off, onClick = onShuffle)
+                val repeatState = stringResource(
+                    when (repeat) {
+                        RepeatMode.OFF -> R.string.repeat_off
+                        RepeatMode.ALL -> R.string.repeat_all
+                        RepeatMode.ONE -> R.string.repeat_one
+                    },
+                )
+                Tool(if (repeat == RepeatMode.ONE) Icons.Filled.RepeatOne else Icons.Filled.Repeat, stringResource(R.string.repeat), active = repeat != RepeatMode.OFF, state = repeatState, onClick = onRepeat)
+                Tool(Icons.Filled.Waves, stringResource(R.string.crossfade), active = ui.crossfadeOn, state = if (ui.crossfadeOn) on else off) { onSheet(PlayerSheet.CROSSFADE) }
+                Tool(Icons.Filled.Equalizer, stringResource(R.string.eq), active = ui.equalizerOn, state = if (ui.equalizerOn) on else off) { onSheet(PlayerSheet.EQUALIZER) }
+                Tool(Icons.Filled.Bedtime, stringResource(R.string.sleep), active = ui.sleep.isActive, state = if (ui.sleep.isActive) on else off) { onSheet(PlayerSheet.SLEEP) }
+                Tool(Icons.AutoMirrored.Filled.QueueMusic, stringResource(R.string.queue), enabled = hasTrack) { onSheet(PlayerSheet.QUEUE) }
+                if (ui.canIdentify) {
+                    // The same two actions as a song's menu, for the song playing.
+                    var menu by remember { mutableStateOf(false) }
+                    Box {
+                        Tool(Icons.Filled.ManageSearch, stringResource(R.string.identify)) { menu = true }
+                        androidx.compose.material3.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text(stringResource(R.string.identify_ellipsis)) },
+                                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                                onClick = { menu = false; onIdentify() },
+                            )
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text(stringResource(R.string.undo_identify_ellipsis)) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = null) },
+                                onClick = { menu = false; onUndoIdentify() },
+                            )
+                        }
+                    }
                 }
+                Tool(Icons.Filled.SpeakerGroup, stringResource(R.string.output)) { showOutputSwitcher(context) }
             }
         }
-        Tool(Icons.Filled.SpeakerGroup, stringResource(R.string.output)) { showOutputSwitcher(context) }
     }
 }
+
+/** Narrow enough for five tools on a 360 dp phone and all nine in the tablet's 600 dp column. */
+private val MIN_TOOL_WIDTH = 60.dp
+private val LocalToolWidth = androidx.compose.runtime.staticCompositionLocalOf { 72.dp }
 
 @Composable
 private fun Tool(icon: ImageVector, label: String, active: Boolean = false, enabled: Boolean = true, state: String? = null, onClick: () -> Unit) {
@@ -509,7 +528,8 @@ private fun Tool(icon: ImageVector, label: String, active: Boolean = false, enab
     TextButton(
         onClick = { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); onClick() },
         enabled = enabled,
-        modifier = Modifier.heightIn(min = Tokens.minTarget).then(if (state != null) Modifier.semantics { stateDescription = state } else Modifier),
+        modifier = Modifier.width(LocalToolWidth.current).heightIn(min = Tokens.minTarget).then(if (state != null) Modifier.semantics { stateDescription = state } else Modifier),
+        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             // A tool that is on gets a plate behind its icon as well as the accent: not told by colour alone.
@@ -519,7 +539,15 @@ private fun Tool(icon: ImageVector, label: String, active: Boolean = false, enab
             ) {
                 Icon(icon, contentDescription = null, tint = tint)
             }
-            Text(label, color = tint, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+            val style = MaterialTheme.typography.labelSmall
+            Text(
+                label,
+                color = tint,
+                style = style,
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(minFontSize = 7.sp, maxFontSize = style.fontSize, stepSize = 0.5.sp),
+                modifier = Modifier.testTag("player.tool.label"),
+            )
         }
     }
 }

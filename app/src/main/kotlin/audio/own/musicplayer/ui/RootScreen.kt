@@ -7,11 +7,16 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.DownloadForOffline
@@ -74,7 +79,9 @@ fun TabsScreen(
         },
     ) {
         Scaffold(
-            bottomBar = { Column { above() } },
+            // The navigation suite takes the navigation bar's inset only with the bottom bar; with
+            // the rail nothing else lifts the mini player above the gesture handle.
+            bottomBar = { Column(Modifier.windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))) { above() } },
             containerColor = MaterialTheme.colorScheme.background,
         ) { inner ->
             Box(Modifier.fillMaxSize().padding(inner).consumeWindowInsets(inner)) { content(selected) }
