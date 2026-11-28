@@ -16,11 +16,24 @@ object CatalogueSearch {
      * digits are kept, so nothing typed reads as the query syntax's operators or quotes; single
      * letters beside longer words are left out.
      */
-    fun match(text: String): String? {
+    fun match(text: String): String? = words(text)?.joinToString(" ") { "$it*" }
+
+    /** The words [match] looks for as prefixes, or null when the text is looked for anywhere. */
+    fun words(text: String): List<String>? {
         if (text.trim().length < MIN_WORD_SEARCH) return null
         val all = text.lowercase().split(NOT_WORD).filter { it.isNotEmpty() }
         // A one-letter prefix reads most of the index; beside longer words it only narrows a little.
-        val words = all.filter { it.length > 1 }.ifEmpty { return null }
-        return words.joinToString(" ") { "$it*" }
+        return all.filter { it.length > 1 }.ifEmpty { null }
+    }
+
+    /**
+     * The same rule in memory, for lists that aren't in the search table (the downloads): every
+     * word typed starts a word of one of [values] ("lower" doesn't find "Blooming Flower"), or
+     * the short text is somewhere in one of them.
+     */
+    fun matches(text: String, values: List<String?>): Boolean {
+        val words = words(text) ?: return values.any { it?.contains(text.trim(), ignoreCase = true) == true }
+        val have = values.flatMap { it?.lowercase()?.split(NOT_WORD).orEmpty() }.filter { it.isNotEmpty() }
+        return words.all { word -> have.any { it.startsWith(word) } }
     }
 }

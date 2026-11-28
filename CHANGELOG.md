@@ -5,6 +5,11 @@ All notable changes to own.audio Music for Android. The format follows
 
 ## [Unreleased]
 
+- The download notification shows at once when a download starts, and progress updates it at most about once a second and only when the percent changes. Progress twice a second next to the player's own notification went over Android's limit of five a second per app, and the download's notification came seconds late or not at all.
+- A file whose audio starts after some junk bytes downloads when the server says it is audio (`audio/*`) or its name has an audio extension: the first 16 KB are searched for a real start (an ID3 tag, two MPEG frames in a row, ADTS, `ftyp`, FLAC, Ogg, WAVE, Matroska). An Audiobookshelf book had MP3s with 384 bytes before the first frame and failed with "The server did not send the file". HTML and JSON error pages are still refused.
+- Release bundles ask for the native libraries' symbol tables (`debugSymbolLevel = SYMBOL_TABLE`). The two native libraries in the app today (from AndroidX graphics-path and DataStore) arrive already stripped, so Play's "native code without debug symbols" warning stays until they ship symbols.
+- Offline search over downloads matches the starts of words like the catalogue's search: "flow" finds "Blooming Flower", "lower" no longer does; one or two letters are still looked for anywhere.
+
 ## [1.0.0] - 2026-11-27
 
 First release on Google Play (closed test).

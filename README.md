@@ -3,8 +3,11 @@
 A native, open-source music player for Android that plays from own.audio, Subsonic/OpenSubsonic (Navidrome, Gonic, …) and Jellyfin servers.
 The Android sibling of [own.audio Music for iPhone and iPad](https://github.com/own-audio/music-ios).
 
-**Status: planning.** Nothing is built yet. The plan is in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md),
-and the parts shared with the other own.audio Android apps are in
+**Status: in testing.** Version 1.0 is built for phones and tablets and is in a closed test on Google Play.
+Signed APKs are on the [Releases page](https://github.com/own-audio/music-android/releases/latest); a GitHub
+install and a Google Play install can't update each other, so uninstall before switching. How to join the
+Google Play test is on [own.audio/apps](https://www.own.audio/apps/#android). F-Droid is planned.
+What changed is in [CHANGELOG.md](CHANGELOG.md); the parts shared with the other own.audio Android apps are in
 [docs/android-foundation.md](docs/android-foundation.md).
 
 - Kotlin, Jetpack Compose, Media3; Android 9 or later.

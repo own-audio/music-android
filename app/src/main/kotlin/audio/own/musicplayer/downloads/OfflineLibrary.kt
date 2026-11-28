@@ -6,6 +6,7 @@ import audio.own.music.library.AlbumWithSongs
 import audio.own.music.library.MusicSource
 import audio.own.music.library.PlaylistWithSongs
 import audio.own.music.library.SourceError
+import audio.own.music.library.db.CatalogueSearch
 import audio.own.music.library.model.Album
 import audio.own.music.library.model.Artist
 import audio.own.music.library.model.Genre
@@ -104,13 +105,13 @@ class OfflineLibrary(private val snapshot: () -> DownloadsSnapshot, private val 
         return PlaylistWithSongs(playlist, snap.songs(view).map { it.song })
     }
 
-    /** Matches in title, artist and album among the downloads. */
+    /** Matches in title, artist and album among the downloads, by word starts as the catalogue's search. */
     fun search(text: String): SearchResult {
-        fun matches(value: String?) = value?.contains(text, ignoreCase = true) == true
+        fun matches(vararg values: String?) = CatalogueSearch.matches(text, values.toList())
         return SearchResult(
             artists = artists().filter { matches(it.name) },
-            albums = albums().filter { matches(it.name) || matches(it.artist) },
-            songs = songs().filter { matches(it.title) || matches(it.artist) || matches(it.album) },
+            albums = albums().filter { matches(it.name, it.artist) },
+            songs = songs().filter { matches(it.title, it.artist, it.album) },
         )
     }
 }

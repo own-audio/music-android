@@ -63,6 +63,19 @@ class OfflineLibraryTest {
     }
 
     @Test
+    fun `search matches word starts, not the middle of a word`() {
+        snapshot = snapshot.copy(items = snapshot.items + ("s|f1" to entity(song("f1", "f", 1).copy(title = "Blooming Flower"), 60)))
+        assertEquals(listOf("s|f1"), offline.search("flow").songs.map { it.id })
+        assertEquals(listOf("s|f1"), offline.search("bloom flo").songs.map { it.id })
+        assertEquals(emptyList<String>(), offline.search("lower").songs.map { it.id })
+        assertEquals(emptyList<String>(), offline.search("ooming").songs.map { it.id })
+        // Words may come from different fields: the title and the artist.
+        assertEquals(listOf("s|f1"), offline.search("flower kev").songs.map { it.id })
+        // Two letters are looked for anywhere, as in the catalogue.
+        assertEquals(listOf("s|f1"), offline.search("ow").songs.map { it.id })
+    }
+
+    @Test
     fun `search matches title, artist and album`() {
         val found = offline.search("aaron")
         assertEquals(listOf("Aaron"), found.artists.map { it.name })
